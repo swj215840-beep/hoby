@@ -1,0 +1,97 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>SnowRain Clean</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <main id="app" class="app title-mode">
+    <section id="titleScreen" class="title-screen">
+      <img id="titleBg" class="title-bg" alt="">
+      <div class="title-vignette"></div>
+      <img id="titleLogo" class="title-logo" alt="SnowRain">
+      <nav class="title-menu" aria-label="title menu">
+        <button id="startBtn">START</button>
+        <button id="continueBtn">CONTINUE</button>
+        <button id="chapterBtn">SCENARIO</button>
+        <button id="galleryBtn">GALLERY</button>
+      </nav>
+    </section>
+
+    <section id="gameScreen" class="game-screen hidden">
+      <img id="backdrop" class="backdrop" alt="">
+      <img id="cgLayer" class="cg-layer hidden" alt="">
+      <img id="characterSprite" class="character-sprite hidden" alt="">
+      <div class="scene-shade"></div>
+      <header class="hud">
+        <div class="hud-field hud-date">
+          <span class="hud-icon hud-icon-date" aria-hidden="true"></span>
+          <span id="dateLabel">3월1째주</span>
+        </div>
+        <button id="autoBtn" class="hud-field hud-week" aria-label="auto">
+          <span class="hud-icon hud-icon-week" aria-hidden="true"></span>
+          <span id="weekLabel">주말</span>
+        </button>
+        <button id="homeBtn" class="hud-field hud-place" aria-label="home">
+          <span class="hud-icon hud-icon-home" aria-hidden="true"></span>
+          <span id="sceneLabel">SnowRain</span>
+        </button>
+        <span id="moneyLabel" class="hud-money">300 cp</span>
+      </header>
+
+      <aside id="statePanel" class="state-panel" aria-label="game state">
+        <div class="state-topline">
+          <span id="dateLabel">3/1 월</span>
+          <span>0 CP</span>
+        </div>
+        <div id="routeLabel" class="route-label">루트 후보 -</div>
+        <div id="statGrid" class="meter-grid"></div>
+        <div id="affectionGrid" class="meter-grid heroine-grid"></div>
+      </aside>
+
+      <div id="centerMenu" class="center-menu hidden">
+        <button id="resumeBtn">RESUME</button>
+        <button id="saveBtn">SAVE</button>
+        <button id="openChaptersBtn">SCENARIO</button>
+        <button id="openGalleryBtn">GALLERY</button>
+        <button id="titleFromMenuBtn">TITLE</button>
+      </div>
+
+      <div id="choiceLayer" class="choice-layer hidden">
+        <h2 id="choiceTitle">NEXT</h2>
+        <div id="choiceList" class="choice-list"></div>
+      </div>
+
+      <div class="bottom-ui" aria-hidden="true"></div>
+      <article id="textBox" class="text-box">
+        <div class="name-row">
+          <span id="speakerName" class="speaker">-</span>
+          <span id="lineCounter" class="line-counter">0 / 0</span>
+        </div>
+        <p id="dialogue" class="dialogue"></p>
+        <div class="tap-mark">NEXT</div>
+      </article>
+      <nav class="play-controls" aria-label="story controls">
+        <button id="prevBtn" class="play-control prev" aria-label="previous"></button>
+        <button id="playBtn" class="play-control play" aria-label="next"></button>
+        <button id="skipBtn" class="play-control skip" aria-label="skip"></button>
+        <button id="quickBtn" class="play-control quick" aria-label="quick save"></button>
+        <button id="loveBtn" class="play-control love" aria-label="menu"></button>
+        <button id="popBtn" class="play-control pop" aria-label="status"></button>
+      </nav>
+    </section>
+
+    <section id="browserScreen" class="browser-screen hidden">
+      <header class="browser-top">
+        <button id="browserBackBtn">BACK</button>
+        <h1 id="browserTitle">SCENARIO</h1>
+      </header>
+      <div id="chapterList" class="chapter-list hidden"></div>
+      <div id="galleryGrid" class="gallery-grid hidden"></div>
+    </section>
+  </main>
+  <script src="app.js"></script>
+</body>
+</html>

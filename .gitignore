@@ -1,0 +1,22 @@
+# Local emulator images and Android transient output
+work/avd/
+work/**/build/
+work/build-*/
+work/safe-build-*/
+
+# Old generated APK variants kept only on this machine
+*.idsig
+*.keystore
+snowrain-modern-*.apk
+snowrain-remake-clean.apk
+work/snowrain-modern-*.apk
+work/main.3.com.gameday.SnowRain.obb
+
+# Keep the files needed to continue the clean rebuild.
+!snowrain-rebuild-originalsafe.apk
+!스노우레인.apk
+!work/snowrain.apk
+
+# Editor and OS noise
+.DS_Store
+Thumbs.db

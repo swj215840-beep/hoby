@@ -1,0 +1,42 @@
+﻿=== Optional Features ===
+
+FeatureName          State
+-----------          -----
+HypervisorPlatform Enabled
+
+
+
+
+FeatureName              State
+-----------              -----
+VirtualMachinePlatform Enabled
+
+
+
+
+FeatureName                     State
+-----------                     -----
+Microsoft-Hyper-V-Hypervisor Disabled
+
+
+
+=== BCDEdit ===
+
+Windows 부팅 로더
+-------------------
+identifier              {current}
+device                  partition=C:
+path                    \WINDOWS\system32\winload.exe
+description             Windows 10
+locale                  ko-KR
+inherit                 {bootloadersettings}
+recoverysequence        {8cff8f49-1352-11ee-b872-9a358bb87728}
+displaymessageoverride  Recovery
+recoveryenabled         Yes
+allowedinmemorysettings 0x15000075
+osdevice                partition=C:
+systemroot              \WINDOWS
+resumeobject            {7bbca51d-6361-11ef-9c13-87642b8ee14a}
+nx                      OptIn
+bootmenupolicy          Standard
+hypervisorlaunchtype    Auto
