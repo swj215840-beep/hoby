@@ -10,6 +10,7 @@ This pass replaces numeric visual guessing with a cursor-based bytecode parser. 
 - Each handler owns `name`, `kind`, `length`, `operands`, and `execute`.
 - `parseVisualBytecode()` is the single cursor loop.
 - `UNKNOWN` advances by one byte and never changes scene, character, face, eye, or state.
+- Current decoded script asset scan reports no remaining unknown opcodes; see `docs/opcode-decode-report.md`.
 - `SET_BACKGROUND` changes the current scene only when the operand points to an existing background resource.
 
 ## Implemented Handlers
@@ -28,8 +29,8 @@ This pass replaces numeric visual guessing with a cursor-based bytecode parser. 
 | `0x0b` | `SET_SPEAKER` | 2 | Speaker id. |
 | `0x0d` | `LINE_BREAK` | 2 for CRLF, otherwise 1 | Text/control separator. |
 | `0x0e` | `SET_STATE_VALUE` | 2 | State operand. |
-| `0xf9`, `0xfb` | `TRANSITION` | 1 | Transition marker; does not infer a background. |
-| `0xfa`, `0xfc`, `0xfd` | `CG_TRANSITION` | 1 | CG transition marker; handled separately from background. |
+| `0xf9`, `0xfb` | transition prefix | 1-2 | Prefix only; payload is parsed by the following opcode. |
+| `0xfa`, `0xfc`, `0xfd` | CG transition prefix | 1-2 | Prefix only; payload is parsed by `0x0f`, `0x10`, `0x11`, or `0x14`. |
 
 ## Required Opcode Cases
 

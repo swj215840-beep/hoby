@@ -1,0 +1,102 @@
+[
+  {
+    "name": "after-01-line001",
+    "requestedLine": 1,
+    "actualLine": 1,
+    "bg": "../game/Bg/28.png",
+    "scene": "번화가",
+    "speaker": "나레이션",
+    "text": "",
+    "trace": "[CONTROL] line=1 offset=0x00 raw=0x01 opcode=BLOCK_MARKER operands={\"marker\":1} result={\"scene\":null,\"character\":null}\n[SCENE] line=1 offset=0x01 raw=0xfb 0x00 opcode=BACKGROUND_TRANSITION_PREFIX operands={\"mode\":0} result={\"scene\":null,\"character\":null}\n[SCENE] line=1 offset=0x03 raw=0x02 0x1c opcode=SET_BACKGROUND operands={\"bgId\":28,\"valid\":true} result={\"scene\":28,\"character\":null}\n[AUDIO] line=1 offset=0x05 raw=0x04 0x14 opcode=PLAY_AUDIO operands={\"audioId\":20} result={\"scene\":28,\"character\":null}\n[STATE] line=1 offset=0x07 raw=0x0e 0x01 opcode=SET_STATE_VALUE operands={\"stateValue\":1,\"nextValue\":1} result={\"scene\":28,\"character\":null}\n[CONTROL] line=1 offset=0x09 raw=0x01 opcode=BLOCK_MARKER operands={\"marker\":1} result={\"scene\":28,\"character\":null}\n[CONTROL] line=1 offset=0x0a raw=0x0d 0x0a opcode=LINE_BREAK operands={\"crlf\":true} result={\"scene\":28,\"character\":null}\n[CONTROL] line=1 offset=0x0c raw=0x01 opcode=BLOCK_MARKER operands={\"marker\":1} result={\"scene\":28,\"character\":null}\n[CONTROL] line=1 offset=0x0d raw=0x01 opcode=BLOCK_MARKER operands={\"marker\":1} result={\"scene\":28,\"character\":null}\n[CONTROL] line=1 offset=0x0e raw=0x00 opcode=NOOP operands={} result={\"scene\":28,\"character\":null}\n[AUDIO] line=1 offset=0x0f raw=0x04 0x05 opcode=PLAY_AUDIO operands={\"audioId\":5} result={\"scene\":28,\"character\":null}"
+  },
+  {
+    "name": "after-02-line005",
+    "requestedLine": 5,
+    "actualLine": 5,
+    "bg": "../game/Bg/2.png",
+    "scene": "학교",
+    "speaker": "나레이션",
+    "text": "",
+    "trace": "[CONTROL] line=5 offset=0x00 raw=0x0d 0x0a opcode=LINE_BREAK operands={\"crlf\":true} result={\"scene\":null,\"character\":null}\n[CONTROL] line=5 offset=0x02 raw=0x01 opcode=BLOCK_MARKER operands={\"marker\":1} result={\"scene\":null,\"character\":null}\n[SCENE] line=5 offset=0x03 raw=0xfb 0x00 opcode=BACKGROUND_TRANSITION_PREFIX operands={\"mode\":0} result={\"scene\":null,\"character\":null}\n[SCENE] line=5 offset=0x05 raw=0x0e 0x01 0x02 opcode=SET_BACKGROUND_FROM_TRANSITION operands={\"groupId\":1,\"bgId\":2,\"valid\":true} result={\"scene\":2,\"character\":null}\n[CONTROL] line=5 offset=0x08 raw=0x0d 0x0a opcode=LINE_BREAK operands={\"crlf\":true} result={\"scene\":2,\"character\":null}"
+  },
+  {
+    "name": "after-03-line014",
+    "requestedLine": 14,
+    "actualLine": 14,
+    "bg": "../game/Bg/4.png",
+    "scene": "쇼핑가",
+    "speaker": "나레이션",
+    "text": "",
+    "trace": "[CONTROL] line=14 offset=0x00 raw=0x0d 0x0a opcode=LINE_BREAK operands={\"crlf\":true} result={\"scene\":null,\"character\":null}\n[CONTROL] line=14 offset=0x02 raw=0x01 opcode=BLOCK_MARKER operands={\"marker\":1} result={\"scene\":null,\"character\":null}\n[SCENE] line=14 offset=0x03 raw=0xfb 0x00 opcode=BACKGROUND_TRANSITION_PREFIX operands={\"mode\":0} result={\"scene\":null,\"character\":null}\n[SCENE] line=14 offset=0x05 raw=0x0e 0xff 0x00 opcode=SET_BACKGROUND_FROM_TRANSITION operands={\"groupId\":255,\"bgId\":0,\"valid\":false} result={\"scene\":null,\"character\":null}\n[CONTROL] line=14 offset=0x08 raw=0x0d 0x0a opcode=LINE_BREAK operands={\"crlf\":true} result={\"scene\":null,\"character\":null}\n[CONTROL] line=14 offset=0x0a raw=0x01 opcode=BLOCK_MARKER operands={\"marker\":1} result={\"scene\":null,\"character\":null}\n[STATE] line=14 offset=0x0b raw=0x03 0x00 opcode=SET_EFFECT operands={\"effectId\":0} result={\"scene\":null,\"character\":null}\n[SCENE] line=14 offset=0x0d raw=0x02 0xff opcode=SET_BACKGROUND operands={\"bgId\":255,\"valid\":false} result={\"scene\":null,\"character\":null}\n[AUDIO] line=14 offset=0x0f raw=0x04 0xff opcode=PLAY_AUDIO operands={\"audioId\":255} result={\"scene\":null,\"character\":null}"
+  },
+  {
+    "name": "after-04-line018",
+    "requestedLine": 18,
+    "actualLine": 18,
+    "bg": "../game/Bg/4.png",
+    "scene": "쇼핑가",
+    "speaker": "지훈",
+    "text": "",
+    "trace": "[CONTROL] line=18 offset=0x00 raw=0x0d 0x0a opcode=LINE_BREAK operands={\"crlf\":true} result={\"scene\":null,\"character\":null}\n[CONTROL] line=18 offset=0x02 raw=0x01 opcode=BLOCK_MARKER operands={\"marker\":1} result={\"scene\":null,\"character\":null}\n[CG] line=18 offset=0x03 raw=0xfd 0x00 opcode=ILLUSTER_TRANSITION_PREFIX operands={\"mode\":0} result={\"scene\":null,\"character\":null}\n[AUDIO] line=18 offset=0x05 raw=0x04 0x02 opcode=PLAY_AUDIO operands={\"audioId\":2} result={\"scene\":null,\"character\":null}\n[CG] line=18 offset=0x07 raw=0x0f 0x01 0x01 opcode=SET_ILLUSTER operands={\"assetId\":1,\"variant\":1,\"clear\":false} result={\"scene\":null,\"character\":null}\n[CONTROL] line=18 offset=0x0a raw=0x0d 0x0a opcode=LINE_BREAK operands={\"crlf\":true} result={\"scene\":null,\"character\":null}\n[SPEAKER] line=18 offset=0x0c raw=0x0b 0x05 opcode=SET_SPEAKER operands={\"speakerId\":5} result={\"scene\":null,\"character\":null}"
+  },
+  {
+    "name": "after-05-line023",
+    "requestedLine": 23,
+    "actualLine": 23,
+    "bg": "../game/Bg/4.png",
+    "scene": "쇼핑가",
+    "speaker": "다혜",
+    "text": "",
+    "trace": "[CONTROL] line=23 offset=0x00 raw=0x0d 0x0a opcode=LINE_BREAK operands={\"crlf\":true} result={\"scene\":null,\"character\":null}\n[CONTROL] line=23 offset=0x02 raw=0x01 opcode=BLOCK_MARKER operands={\"marker\":1} result={\"scene\":null,\"character\":null}\n[CG] line=23 offset=0x03 raw=0xfd 0x00 opcode=ILLUSTER_TRANSITION_PREFIX operands={\"mode\":0} result={\"scene\":null,\"character\":null}\n[CG] line=23 offset=0x05 raw=0x0f 0x01 0x02 opcode=SET_ILLUSTER operands={\"assetId\":1,\"variant\":2,\"clear\":false} result={\"scene\":null,\"character\":null}\n[CONTROL] line=23 offset=0x08 raw=0x0d 0x0a opcode=LINE_BREAK operands={\"crlf\":true} result={\"scene\":null,\"character\":null}\n[SPEAKER] line=23 offset=0x0a raw=0x0b 0x00 opcode=SET_SPEAKER operands={\"speakerId\":0} result={\"scene\":null,\"character\":null}"
+  },
+  {
+    "name": "after-06-line037",
+    "requestedLine": 37,
+    "actualLine": 37,
+    "bg": "../game/Bg/28.png",
+    "scene": "번화가",
+    "speaker": "다혜",
+    "text": "",
+    "trace": "[CONTROL] line=37 offset=0x00 raw=0x0d 0x0a opcode=LINE_BREAK operands={\"crlf\":true} result={\"scene\":null,\"character\":null}\n[CONTROL] line=37 offset=0x02 raw=0x01 opcode=BLOCK_MARKER operands={\"marker\":1} result={\"scene\":null,\"character\":null}\n[CG] line=37 offset=0x03 raw=0xfd 0x00 opcode=ILLUSTER_TRANSITION_PREFIX operands={\"mode\":0} result={\"scene\":null,\"character\":null}\n[CG] line=37 offset=0x05 raw=0x0f 0xff 0x00 opcode=SET_ILLUSTER operands={\"assetId\":255,\"variant\":0,\"clear\":true} result={\"scene\":null,\"character\":null}\n[CONTROL] line=37 offset=0x08 raw=0x0d 0x0a opcode=LINE_BREAK operands={\"crlf\":true} result={\"scene\":null,\"character\":null}\n[SCENE] line=37 offset=0x0a raw=0x02 0x1c opcode=SET_BACKGROUND operands={\"bgId\":28,\"valid\":true} result={\"scene\":28,\"character\":null}\n[FACE] line=37 offset=0x0c raw=0x05 0x00 0x0a opcode=SET_EXPRESSION operands={\"characterId\":0,\"faceId\":10} result={\"scene\":28,\"character\":{\"id\":0,\"body\":1,\"face\":10,\"eye\":null,\"position\":\"center\"}}\n[POS] line=37 offset=0x0f raw=0x06 0x03 opcode=SET_POSITION operands={\"characterId\":0,\"positionId\":3,\"position\":\"right\"} result={\"scene\":28,\"character\":{\"id\":0,\"body\":1,\"face\":10,\"eye\":null,\"position\":\"right\"}}\n[SPEAKER] line=37 offset=0x11 raw=0x0b 0x00 opcode=SET_SPEAKER operands={\"speakerId\":0} result={\"scene\":28,\"character\":{\"id\":0,\"body\":1,\"face\":10,\"eye\":null,\"position\":\"right\"}}"
+  },
+  {
+    "name": "after-07-line042",
+    "requestedLine": 42,
+    "actualLine": 42,
+    "bg": "../game/Bg/28.png",
+    "scene": "번화가",
+    "speaker": "다혜",
+    "text": "",
+    "trace": "[CONTROL] line=42 offset=0x00 raw=0x0d 0x0a opcode=LINE_BREAK operands={\"crlf\":true} result={\"scene\":null,\"character\":null}\n[FACE] line=42 offset=0x02 raw=0x05 0x00 0x02 opcode=SET_EXPRESSION operands={\"characterId\":0,\"faceId\":2} result={\"scene\":null,\"character\":{\"id\":0,\"body\":1,\"face\":2,\"eye\":null,\"position\":\"right\"}}\n[SPEAKER] line=42 offset=0x05 raw=0x0b 0x00 opcode=SET_SPEAKER operands={\"speakerId\":0} result={\"scene\":null,\"character\":{\"id\":0,\"body\":1,\"face\":2,\"eye\":null,\"position\":\"right\"}}"
+  },
+  {
+    "name": "after-08-line050",
+    "requestedLine": 50,
+    "actualLine": 50,
+    "bg": "../game/Bg/28.png",
+    "scene": "번화가",
+    "speaker": "다혜",
+    "text": "",
+    "trace": "[CONTROL] line=50 offset=0x00 raw=0x0d 0x0a opcode=LINE_BREAK operands={\"crlf\":true} result={\"scene\":null,\"character\":null}\n[CONTROL] line=50 offset=0x02 raw=0x01 opcode=BLOCK_MARKER operands={\"marker\":1} result={\"scene\":null,\"character\":null}\n[SCENE] line=50 offset=0x03 raw=0x02 0x00 opcode=SET_BACKGROUND operands={\"bgId\":0,\"valid\":false} result={\"scene\":null,\"character\":null}\n[SCENE] line=50 offset=0x05 raw=0x02 0xff opcode=SET_BACKGROUND operands={\"bgId\":255,\"valid\":false} result={\"scene\":null,\"character\":null}\n[AUDIO] line=50 offset=0x07 raw=0x04 0xff opcode=PLAY_AUDIO operands={\"audioId\":255} result={\"scene\":null,\"character\":null}"
+  },
+  {
+    "name": "after-09-line055",
+    "requestedLine": 55,
+    "actualLine": 55,
+    "bg": "../game/Bg/27.png",
+    "scene": "카페",
+    "speaker": "다혜",
+    "text": "",
+    "trace": "[CONTROL] line=55 offset=0x00 raw=0x0d 0x0a opcode=LINE_BREAK operands={\"crlf\":true} result={\"scene\":null,\"character\":null}\n[CONTROL] line=55 offset=0x02 raw=0x01 opcode=BLOCK_MARKER operands={\"marker\":1} result={\"scene\":null,\"character\":null}\n[CONTROL] line=55 offset=0x03 raw=0x01 opcode=BLOCK_MARKER operands={\"marker\":1} result={\"scene\":null,\"character\":null}\n[CONTROL] line=55 offset=0x04 raw=0x00 opcode=NOOP operands={} result={\"scene\":null,\"character\":null}\n[SCENE] line=55 offset=0x05 raw=0x02 0x1b opcode=SET_BACKGROUND operands={\"bgId\":27,\"valid\":true} result={\"scene\":27,\"character\":null}\n[FACE] line=55 offset=0x07 raw=0x05 0x00 0x0a opcode=SET_EXPRESSION operands={\"characterId\":0,\"faceId\":10} result={\"scene\":27,\"character\":{\"id\":0,\"body\":1,\"face\":10,\"eye\":null,\"position\":\"right\"}}\n[POS] line=55 offset=0x0a raw=0x06 0x03 opcode=SET_POSITION operands={\"characterId\":0,\"positionId\":3,\"position\":\"right\"} result={\"scene\":27,\"character\":{\"id\":0,\"body\":1,\"face\":10,\"eye\":null,\"position\":\"right\"}}\n[AUDIO] line=55 offset=0x0c raw=0x04 0x13 opcode=PLAY_AUDIO operands={\"audioId\":19} result={\"scene\":27,\"character\":{\"id\":0,\"body\":1,\"face\":10,\"eye\":null,\"position\":\"right\"}}\n[SPEAKER] line=55 offset=0x0e raw=0x0b 0x00 opcode=SET_SPEAKER operands={\"speakerId\":0} result={\"scene\":27,\"character\":{\"id\":0,\"body\":1,\"face\":10,\"eye\":null,\"position\":\"right\"}}"
+  },
+  {
+    "name": "after-10-line070",
+    "requestedLine": 70,
+    "actualLine": 70,
+    "bg": "../game/Bg/27.png",
+    "scene": "카페",
+    "speaker": "다혜",
+    "text": "",
+    "trace": "[CONTROL] line=70 offset=0x00 raw=0x0d 0x0a opcode=LINE_BREAK operands={\"crlf\":true} result={\"scene\":null,\"character\":null}\n[FACE] line=70 offset=0x02 raw=0x05 0x00 0x01 opcode=SET_EXPRESSION operands={\"characterId\":0,\"faceId\":1} result={\"scene\":null,\"character\":{\"id\":0,\"body\":1,\"face\":1,\"eye\":null,\"position\":\"right\"}}\n[SPEAKER] line=70 offset=0x05 raw=0x0b 0x00 opcode=SET_SPEAKER operands={\"speakerId\":0} result={\"scene\":null,\"character\":{\"id\":0,\"body\":1,\"face\":1,\"eye\":null,\"position\":\"right\"}}"
+  }
+]

@@ -1021,6 +1021,42 @@
     return (bytes, offset) => Math.min(fixedLength, Math.max(1, bytes.length - offset));
   }
 
+  function transitionPrefixLength(bytes, offset) {
+    return bytes[offset + 1] === 0x00 ? Math.min(2, bytes.length - offset) : 1;
+  }
+
+  function visualAssetOperand(bytes, offset) {
+    return {
+      assetId: bytes[offset + 1] ?? null,
+      variant: bytes[offset + 2] ?? null,
+      clear: bytes[offset + 1] === 0xff
+    };
+  }
+
+  function setVisualAssetContext(context, kind, operands) {
+    context.visualAsset = {
+      kind,
+      id: operands.assetId,
+      variant: operands.variant,
+      clear: operands.clear
+    };
+    if (context.transition) context.transition = null;
+  }
+
+  function inertMarker(name, operandName = "value") {
+    return {
+      name,
+      kind: "STATE",
+      length: bytecodeLength(2),
+      operands(bytes, offset) {
+        return { [operandName]: bytes[offset + 1] ?? null };
+      },
+      execute(context, operands) {
+        context.stateValue = operands[operandName];
+      }
+    };
+  }
+
   const OPCODE_HANDLERS = {
     0x00: {
       name: "NOOP",
@@ -1048,6 +1084,7 @@
       },
       execute(context, operands) {
         if (operands.valid) context.result.scene = operands.bgId;
+        if (context.transition) context.transition = null;
       }
     },
     0x03: {
@@ -1131,6 +1168,15 @@
         context.lastCharacterOpcode = null;
       }
     },
+    0x07: {
+      name: "SET_CHARACTER_SLOT",
+      kind: "CHAR",
+      length: bytecodeLength(1),
+      operands: () => ({}),
+      execute(context) {
+        context.lastCharacterOpcode = null;
+      }
+    },
     0x08: {
       name: "SET_CHARACTER",
       kind: "CHAR",
@@ -1153,6 +1199,24 @@
         const character = makeCharacterState(operands.characterId, operands.bodyId, expression, previous);
         if (character) context.result.character = character;
         context.lastCharacterOpcode = "SET_CHARACTER";
+      }
+    },
+    0x09: {
+      name: "SET_EYE",
+      kind: "EYE",
+      length: bytecodeLength(2),
+      operands(bytes, offset) {
+        return { eyeId: bytes[offset + 1] ?? null };
+      },
+      execute(context, operands) {
+        const character = context.result.character || context.previousCharacter;
+        if (!character || operands.eyeId === 0xff) return;
+        context.result.character = {
+          ...character,
+          eye: operands.eyeId,
+          eyePath: characterEyePathFor(operands.eyeId)
+        };
+        context.currentOperands = { characterId: character.id, eyeId: operands.eyeId };
       }
     },
     0x0a: {
@@ -1187,19 +1251,169 @@
     0x0e: {
       name: "SET_STATE_VALUE",
       kind: "STATE",
-      length: bytecodeLength(2),
+      length(bytes, offset, context) {
+        if (context.transition?.opcode === 0xfb && offset + 2 < bytes.length) return 3;
+        return bytecodeLength(2)(bytes, offset);
+      },
       operands(bytes, offset) {
-        return { stateValue: bytes[offset + 1] ?? null };
+        return {
+          stateValue: bytes[offset + 1] ?? null,
+          nextValue: bytes[offset + 2] ?? null
+        };
       },
       execute(context, operands) {
+        if (context.transition?.opcode === 0xfb) {
+          const bgId = operands.nextValue;
+          const valid = backgroundPathForId(bgId) !== null;
+          if (valid) context.result.scene = bgId;
+          context.currentKind = "SCENE";
+          context.currentName = "SET_BACKGROUND_FROM_TRANSITION";
+          context.currentOperands = {
+            groupId: operands.stateValue,
+            bgId,
+            valid
+          };
+          context.transition = null;
+          return;
+        }
         context.stateValue = operands.stateValue;
       }
     },
-    0xf9: { name: "TRANSITION", kind: "SCENE", length: bytecodeLength(1), operands: () => ({}), execute() {} },
-    0xfa: { name: "CG_TRANSITION", kind: "CG", length: bytecodeLength(1), operands: () => ({}), execute() {} },
-    0xfb: { name: "TRANSITION", kind: "SCENE", length: bytecodeLength(1), operands: () => ({}), execute() {} },
-    0xfc: { name: "CG_TRANSITION", kind: "CG", length: bytecodeLength(1), operands: () => ({}), execute() {} },
-    0xfd: { name: "CG_TRANSITION", kind: "CG", length: bytecodeLength(1), operands: () => ({}), execute() {} }
+    0x0f: {
+      name: "SET_ILLUSTER",
+      kind: "CG",
+      length: bytecodeLength(3),
+      operands: visualAssetOperand,
+      execute(context, operands) {
+        setVisualAssetContext(context, "Illuster", operands);
+      }
+    },
+    0x10: {
+      name: "SET_CARTOON",
+      kind: "CG",
+      length: bytecodeLength(3),
+      operands: visualAssetOperand,
+      execute(context, operands) {
+        setVisualAssetContext(context, "Cartoon", operands);
+      }
+    },
+    0x11: {
+      name: "SET_COMIC",
+      kind: "CG",
+      length: bytecodeLength(3),
+      operands: visualAssetOperand,
+      execute(context, operands) {
+        setVisualAssetContext(context, "Comic", operands);
+      }
+    },
+    0x12: inertMarker("SET_SCENE_EVENT_MARKER", "eventId"),
+    0x13: inertMarker("SET_SCENE_EVENT_MARKER", "eventId"),
+    0x14: {
+      name: "SET_MINI_ILLUSTER",
+      kind: "CG",
+      length: bytecodeLength(3),
+      operands: visualAssetOperand,
+      execute(context, operands) {
+        setVisualAssetContext(context, "MiniIlluster", operands);
+      }
+    },
+    0x15: inertMarker("SET_BACKGROUND_GROUP", "groupId"),
+    0x16: inertMarker("SET_STATE_EVENT_ID", "eventId"),
+    0x17: inertMarker("SET_SCENE_EVENT_MARKER", "eventId"),
+    0x18: inertMarker("SET_SCENE_EVENT_MARKER", "eventId"),
+    0x19: inertMarker("SET_SCENE_EVENT_MARKER", "eventId"),
+    0x1a: inertMarker("SET_SCENE_EVENT_MARKER", "eventId"),
+    0x1b: inertMarker("SET_SCENE_EVENT_MARKER", "eventId"),
+    0x1e: inertMarker("SET_SCENE_EVENT_MARKER", "eventId"),
+    0x1f: inertMarker("SET_SCENE_EVENT_MARKER", "eventId"),
+    0x20: inertMarker("SET_SCENE_EVENT_MARKER", "eventId"),
+    0x21: inertMarker("SET_DATE_BRANCH", "branchId"),
+    0x22: inertMarker("SET_DATE_BRANCH", "branchId"),
+    0x23: inertMarker("SET_DATE_BRANCH", "branchId"),
+    0x24: inertMarker("SET_LOVE_MENU_DRINK", "menuId"),
+    0x25: inertMarker("SET_LOVE_RESULT", "resultId"),
+    0x26: inertMarker("SET_LOVE_MENU_DESSERT", "menuId"),
+    0x27: inertMarker("SET_LOVE_MENU_EXTRA", "menuId"),
+    0x28: inertMarker("SET_LOVE_BRANCH", "branchId"),
+    0x29: inertMarker("SET_DATE_INTRO_MARKER", "markerId"),
+    0x2a: inertMarker("SET_LOVE_EVENT_MARKER", "eventId"),
+    0x2b: inertMarker("SET_DATE_END_MARKER", "markerId"),
+    0x2c: inertMarker("SET_LOVE_EVENT_MARKER", "eventId"),
+    0x2d: inertMarker("SET_LOVE_EVENT_MARKER", "eventId"),
+    0x2e: inertMarker("SET_LOVE_EVENT_MARKER", "eventId"),
+    0x2f: inertMarker("SET_LOVE_EVENT_MARKER", "eventId"),
+    0x30: inertMarker("SET_LOVE_EVENT_MARKER", "eventId"),
+    0x31: inertMarker("SET_LOVE_BRANCH", "branchId"),
+    0x32: inertMarker("SET_LOVE_BRANCH", "branchId"),
+    0x33: inertMarker("SET_LOVE_BRANCH", "branchId"),
+    0x34: inertMarker("SET_LOVE_BRANCH", "branchId"),
+    0x35: inertMarker("SET_LOVE_MENU_CLOSE", "menuId"),
+    0x36: inertMarker("SET_LOVE_MENU_END", "menuId"),
+    0x37: inertMarker("SET_SCENE_EVENT_MARKER", "eventId"),
+    0x38: inertMarker("SET_SCENE_EVENT_MARKER", "eventId"),
+    0x5f: inertMarker("SET_AFTER_STORY_MARKER", "markerId"),
+    0xf9: {
+      name: "SCENE_TRANSITION_PREFIX",
+      kind: "SCENE",
+      length: transitionPrefixLength,
+      operands(bytes, offset) {
+        return { mode: bytes[offset + 1] ?? null };
+      },
+      execute(context, operands) {
+        context.transition = { opcode: 0xf9, mode: operands.mode };
+      }
+    },
+    0xfa: {
+      name: "COMIC_TRANSITION_PREFIX",
+      kind: "CG",
+      length: transitionPrefixLength,
+      operands(bytes, offset) {
+        return { mode: bytes[offset + 1] ?? null };
+      },
+      execute(context, operands) {
+        context.transition = { opcode: 0xfa, mode: operands.mode };
+      }
+    },
+    0xfb: {
+      name: "BACKGROUND_TRANSITION_PREFIX",
+      kind: "SCENE",
+      length: transitionPrefixLength,
+      operands(bytes, offset) {
+        return { mode: bytes[offset + 1] ?? null };
+      },
+      execute(context, operands) {
+        context.transition = { opcode: 0xfb, mode: operands.mode };
+      }
+    },
+    0xfc: {
+      name: "CARTOON_TRANSITION_PREFIX",
+      kind: "CG",
+      length: transitionPrefixLength,
+      operands(bytes, offset) {
+        return { mode: bytes[offset + 1] ?? null };
+      },
+      execute(context, operands) {
+        context.transition = { opcode: 0xfc, mode: operands.mode };
+      }
+    },
+    0xfd: {
+      name: "ILLUSTER_TRANSITION_PREFIX",
+      kind: "CG",
+      length: transitionPrefixLength,
+      operands(bytes, offset) {
+        return { mode: bytes[offset + 1] ?? null };
+      },
+      execute(context, operands) {
+        context.transition = { opcode: 0xfd, mode: operands.mode };
+      }
+    },
+    0xff: {
+      name: "COMMAND_SENTINEL",
+      kind: "CONTROL",
+      length: bytecodeLength(1),
+      operands: () => ({ value: 0xff }),
+      execute() {}
+    }
   };
 
   const UNKNOWN_OPCODE_HANDLER = {
