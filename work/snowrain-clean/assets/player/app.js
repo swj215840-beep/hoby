@@ -316,6 +316,7 @@
     spriteCache: new Map(),
     spriteRenderToken: 0,
     characterAnchors: {},
+    characterCompatibilityLog: new Set(),
     scriptTrace: [],
     debugAnchors: false,
     audioUnlocked: false,
@@ -359,10 +360,12 @@
     anchorDebugMeta: $("anchorDebugMeta"),
     anchorTrace: $("anchorTrace"),
     anchorCloseBtn: $("anchorCloseBtn"),
-    faceXInput: $("faceXInput"),
-    faceYInput: $("faceYInput"),
-    eyeXInput: $("eyeXInput"),
-    eyeYInput: $("eyeYInput"),
+    bodyNeckXInput: $("bodyNeckXInput"),
+    bodyNeckYInput: $("bodyNeckYInput"),
+    faceNeckXInput: $("faceNeckXInput"),
+    faceNeckYInput: $("faceNeckYInput"),
+    eyeAttachXInput: $("eyeAttachXInput"),
+    eyeAttachYInput: $("eyeAttachYInput"),
     anchorApplyBtn: $("anchorApplyBtn"),
     anchorCopyBtn: $("anchorCopyBtn"),
     anchorDownloadBtn: $("anchorDownloadBtn")
@@ -591,41 +594,153 @@
     return `character_${id}`;
   }
 
+  const FACE_NECK_DEFAULTS = {
+    0: { x: 38, y: 70 },
+    1: { x: 38, y: 70 },
+    2: { x: 39, y: 70 },
+    3: { x: 39, y: 70 },
+    4: { x: 38, y: 64 },
+    6: { x: 40, y: 70 },
+    8: { x: 33, y: 78 },
+    10: { x: 37, y: 66 }
+  };
+
+  function pointFor(value, fallback = { x: 0, y: 0 }) {
+    return {
+      x: Number(value?.x ?? fallback.x ?? 0) || 0,
+      y: Number(value?.y ?? fallback.y ?? 0) || 0
+    };
+  }
+
+  function faceNeckDefaultFor(id) {
+    return FACE_NECK_DEFAULTS[Number(id)] || { x: 38, y: 70 };
+  }
+
+  function isLegacyAnchorConfig(config) {
+    return Boolean(config?.face || config?.eye);
+  }
+
+  function legacyAnchorToCloth(id, config = {}) {
+    const body = pointFor(config.body);
+    const face = pointFor(config.face);
+    const eye = pointFor(config.eye, { x: face.x + 8, y: face.y + 24 });
+    const faceNeckAttach = faceNeckDefaultFor(id);
+    const eyeAttach = { x: eye.x - face.x, y: eye.y - face.y };
+    return {
+      body,
+      bodyNeckAttach: {
+        x: body.x + face.x + faceNeckAttach.x,
+        y: body.y + face.y + faceNeckAttach.y
+      },
+      faces: {
+        face_default: {
+          faceNeckAttach,
+          eyeAttach
+        }
+      },
+      drawOrder: ["body", "face", "eye"],
+    };
+  }
+
   function defaultCharacterAnchor(id) {
-    const body = characterImageFor(id, 1);
-    const files = state.characterMap[String(id)] || [];
-    const widthHint = id === 0 ? 300 : id === 2 ? 202 : id === 4 ? 188 : id === 6 ? 136 : id === 10 ? 160 : 240;
+    const faceNeckAttach = faceNeckDefaultFor(id);
     return {
       body: { x: 0, y: 0 },
-      face: { x: Math.max(0, Math.round((widthHint - 76) / 2)), y: 0 },
-      eye: { x: Math.max(0, Math.round((widthHint - 76) / 2) + 8), y: 24 },
-      drawOrder: ["body", "face", "eye"],
-      source: body && files.length ? "fallback" : "fallback"
+      bodyNeckAttach: { x: faceNeckAttach.x, y: faceNeckAttach.y },
+      faces: {
+        face_default: {
+          faceNeckAttach,
+          eyeAttach: { x: 8, y: 24 }
+        }
+      },
+      drawOrder: ["body", "face", "eye"]
     };
   }
 
-  function characterAnchorFor(id) {
+  function firstConfigEntry(config, prefix) {
+    if (!config || typeof config !== "object") return [null, null];
+    const key = Object.keys(config).find((entry) => entry.startsWith(prefix));
+    return key ? [key, config[key]] : [null, null];
+  }
+
+  function characterAnchorFor(characterOrId) {
+    const character = typeof characterOrId === "object" ? characterOrId : { id: characterOrId };
+    const id = Number(character?.id ?? 0);
+    const bodyId = Number(character?.variant ?? 1) || 1;
+    const faceId = Number(character?.expression ?? 2) || 2;
+    const eyeId = Number(character?.eye ?? 0) || null;
     const key = characterAnchorKey(id);
-    const base = state.characterAnchors[key] || defaultCharacterAnchor(id);
+    let characterConfig = state.characterAnchors[key] || {};
+    if (isLegacyAnchorConfig(characterConfig)) {
+      characterConfig = { cloth_1: legacyAnchorToCloth(id, characterConfig) };
+    }
+    const clothKey = `cloth_${bodyId}`;
+    const [firstClothKey, firstCloth] = firstConfigEntry(characterConfig, "cloth_");
+    const cloth = characterConfig[clothKey] || characterConfig.cloth_1 || firstCloth || defaultCharacterAnchor(id);
+    const resolvedClothKey = characterConfig[clothKey] ? clothKey : (characterConfig.cloth_1 ? clothKey : (firstClothKey || clothKey));
+    const faceKey = `face_${faceId}`;
+    const faces = cloth.faces || {};
+    const [firstFaceKey, firstFace] = firstConfigEntry(faces, "face_");
+    const faceConfig = faces[faceKey] || faces.face_default || faces.face_2 || firstFace || defaultCharacterAnchor(id).faces.face_default;
+    const resolvedFaceKey = faces[faceKey] ? faceKey : faceKey;
+    const body = pointFor(cloth.body);
+    const bodyNeckAttach = pointFor(cloth.bodyNeckAttach);
+    const faceNeckAttach = pointFor(faceConfig.faceNeckAttach, faceNeckDefaultFor(id));
+    const eyeAttach = pointFor(faceConfig.eyeAttach, { x: 8, y: 24 });
+    const face = {
+      x: body.x + bodyNeckAttach.x - faceNeckAttach.x,
+      y: body.y + bodyNeckAttach.y - faceNeckAttach.y
+    };
+    const eye = {
+      x: face.x + eyeAttach.x,
+      y: face.y + eyeAttach.y
+    };
     return {
-      body: { x: Number(base.body?.x || 0), y: Number(base.body?.y || 0) },
-      face: { x: Number(base.face?.x || 0), y: Number(base.face?.y || 0) },
-      eye: { x: Number(base.eye?.x || 0), y: Number(base.eye?.y || 0) },
-      drawOrder: Array.isArray(base.drawOrder) && base.drawOrder.length ? base.drawOrder : ["body", "face", "eye"]
+      body,
+      bodyNeckAttach,
+      faceNeckAttach,
+      eyeAttach,
+      face,
+      eye,
+      bodyId,
+      faceId,
+      eyeId,
+      clothKey: resolvedClothKey,
+      faceKey: resolvedFaceKey,
+      drawOrder: Array.isArray(cloth.drawOrder) && cloth.drawOrder.length ? cloth.drawOrder : ["body", "face", "eye"]
     };
   }
 
-  function setCharacterAnchor(id, patch) {
+  function setCharacterAnchor(characterOrId, patch) {
+    const character = typeof characterOrId === "object" ? characterOrId : { id: characterOrId };
+    const id = Number(character?.id ?? 0);
     const key = characterAnchorKey(id);
-    const current = characterAnchorFor(id);
-    state.characterAnchors[key] = {
-      ...current,
-      ...patch,
-      body: { ...current.body, ...(patch.body || {}) },
-      face: { ...current.face, ...(patch.face || {}) },
-      eye: { ...current.eye, ...(patch.eye || {}) },
-      drawOrder: patch.drawOrder || current.drawOrder
+    const current = characterAnchorFor(character);
+    const characterConfig = isLegacyAnchorConfig(state.characterAnchors[key])
+      ? { cloth_1: legacyAnchorToCloth(id, state.characterAnchors[key]) }
+      : { ...(state.characterAnchors[key] || {}) };
+    const clothKey = current.clothKey && current.clothKey !== "cloth_default" ? current.clothKey : `cloth_${current.bodyId || 1}`;
+    const faceKey = current.faceKey && current.faceKey !== "face_default" ? current.faceKey : `face_${current.faceId || 2}`;
+    const cloth = {
+      ...defaultCharacterAnchor(id),
+      ...(characterConfig[clothKey] || {}),
+      faces: { ...((characterConfig[clothKey] || {}).faces || {}) }
     };
+    const faceConfig = {
+      faceNeckAttach: current.faceNeckAttach,
+      eyeAttach: current.eyeAttach,
+      ...(cloth.faces[faceKey] || {})
+    };
+    cloth.body = { ...current.body, ...(patch.body || {}) };
+    cloth.bodyNeckAttach = { ...current.bodyNeckAttach, ...(patch.bodyNeckAttach || {}) };
+    cloth.faces[faceKey] = {
+      ...faceConfig,
+      faceNeckAttach: { ...current.faceNeckAttach, ...(patch.faceNeckAttach || {}) },
+      eyeAttach: { ...current.eyeAttach, ...(patch.eyeAttach || {}) }
+    };
+    cloth.drawOrder = patch.drawOrder || current.drawOrder;
+    characterConfig[clothKey] = cloth;
+    state.characterAnchors[key] = characterConfig;
     state.spriteCache.clear();
     try {
       localStorage.setItem("snowrain.characterAnchors", JSON.stringify(state.characterAnchors, null, 2));
@@ -2396,24 +2511,65 @@
     });
   }
 
+  function drawAnchorCrosshair(context, point, color, label) {
+    const x = Math.round(point.x);
+    const y = Math.round(point.y);
+    context.save();
+    context.strokeStyle = color;
+    context.fillStyle = color;
+    context.lineWidth = 1;
+    context.beginPath();
+    context.moveTo(x - 8, y);
+    context.lineTo(x + 8, y);
+    context.moveTo(x, y - 8);
+    context.lineTo(x, y + 8);
+    context.stroke();
+    context.font = "10px monospace";
+    context.fillText(label, x + 5, y - 5);
+    context.restore();
+  }
+
+  function logCharacterCompatibility(character, anchor, bodyPath, facePath, bodyImage, faceImage) {
+    const expectedFacePrefix = `character/face/${character.id}/`;
+    const compatible = Boolean(bodyPath?.startsWith(`character/${character.id}/`) && facePath?.startsWith(expectedFacePrefix));
+    const signature = `${character.id}:${anchor.bodyId}:${anchor.faceId}:${bodyPath}:${facePath}`;
+    if (state.characterCompatibilityLog.has(signature)) return;
+    state.characterCompatibilityLog.add(signature);
+    console.info("[CHAR_COMPAT]", {
+      characterId: character.id,
+      bodyId: anchor.bodyId,
+      clothId: anchor.bodyId,
+      faceId: anchor.faceId,
+      eyeId: anchor.eyeId,
+      bodyPath,
+      facePath,
+      bodySize: `${bodyImage.naturalWidth || bodyImage.width}x${bodyImage.naturalHeight || bodyImage.height}`,
+      faceSize: `${faceImage.naturalWidth || faceImage.width}x${faceImage.naturalHeight || faceImage.height}`,
+      compatible
+    });
+  }
+
   async function composedSpriteSrc(character) {
     if (!character?.path) return null;
     const faceCandidates = Array.isArray(character.faceCandidates) && character.faceCandidates.length
       ? character.faceCandidates
       : (character.face ? [character.face] : []);
     if (!faceCandidates.length) return asset(character.path);
-    const anchor = characterAnchorFor(character.id);
-    const key = `${character.path}|${faceCandidates.join("|")}|${character.eyePath || ""}|${JSON.stringify(anchor)}`;
+    const anchor = characterAnchorFor(character);
+    const key = `${character.path}|${faceCandidates.join("|")}|${character.eyePath || ""}|${state.debugAnchors ? "debug" : "play"}|${JSON.stringify(anchor)}`;
     if (state.spriteCache.has(key)) return state.spriteCache.get(key);
 
     const body = await loadSpriteImage(character.path);
     let face = null;
+    let facePath = null;
     for (const candidate of faceCandidates) {
       try {
         face = await loadSpriteImage(candidate);
+        facePath = candidate;
         break;
       } catch (_) {
         face = null;
+        facePath = null;
       }
     }
     if (!face) return asset(character.path);
@@ -2438,6 +2594,24 @@
       if (layer === "eye" && eye) context.drawImage(eye, anchor.eye.x, anchor.eye.y);
     };
     anchor.drawOrder.forEach(drawLayer);
+    logCharacterCompatibility(character, anchor, character.path, facePath, body, face);
+    if (state.debugAnchors) {
+      const bodyNeckPoint = {
+        x: anchor.body.x + anchor.bodyNeckAttach.x,
+        y: anchor.body.y + anchor.bodyNeckAttach.y
+      };
+      const faceNeckPoint = {
+        x: anchor.face.x + anchor.faceNeckAttach.x,
+        y: anchor.face.y + anchor.faceNeckAttach.y
+      };
+      const eyeAttachPoint = {
+        x: anchor.face.x + anchor.eyeAttach.x,
+        y: anchor.face.y + anchor.eyeAttach.y
+      };
+      drawAnchorCrosshair(context, bodyNeckPoint, "#35d9ff", "body neck");
+      drawAnchorCrosshair(context, faceNeckPoint, "#ff5fd2", "face neck");
+      drawAnchorCrosshair(context, eyeAttachPoint, "#ffe45f", "eye attach");
+    }
     const url = canvas.toDataURL("image/png");
     state.spriteCache.set(key, url);
     return url;
@@ -2494,13 +2668,31 @@
       nodes.anchorTrace.textContent = (event?.trace || []).join("\n");
       return;
     }
-    const anchor = characterAnchorFor(character.id);
-    nodes.anchorDebugMeta.textContent = `character_${character.id} body=${character.variant} face=${character.expression} eye=${character.eye || "-"}`;
-    nodes.faceXInput.value = anchor.face.x;
-    nodes.faceYInput.value = anchor.face.y;
-    nodes.eyeXInput.value = anchor.eye.x;
-    nodes.eyeYInput.value = anchor.eye.y;
-    nodes.anchorTrace.textContent = (event?.trace || []).join("\n") || "(no visual opcode on this line)";
+    const anchor = characterAnchorFor(character);
+    nodes.anchorDebugMeta.textContent = [
+      `character_${character.id}`,
+      `bodyId=${anchor.bodyId}`,
+      `clothId=${anchor.bodyId}`,
+      `faceId=${anchor.faceId}`,
+      `eyeId=${anchor.eyeId || "-"}`,
+      `cloth=${anchor.clothKey}`,
+      `face=${anchor.faceKey}`
+    ].join(" ");
+    nodes.bodyNeckXInput.value = anchor.bodyNeckAttach.x;
+    nodes.bodyNeckYInput.value = anchor.bodyNeckAttach.y;
+    nodes.faceNeckXInput.value = anchor.faceNeckAttach.x;
+    nodes.faceNeckYInput.value = anchor.faceNeckAttach.y;
+    nodes.eyeAttachXInput.value = anchor.eyeAttach.x;
+    nodes.eyeAttachYInput.value = anchor.eyeAttach.y;
+    const bodyPath = character.path || "-";
+    const facePath = character.face || character.faceCandidates?.[0] || "-";
+    const compat = bodyPath.startsWith(`character/${character.id}/`) && facePath.startsWith(`character/face/${character.id}/`);
+    const trace = (event?.trace || []).join("\n") || "(no visual opcode on this line)";
+    nodes.anchorTrace.textContent = [
+      `[ANCHOR] bodyNeck=(${anchor.bodyNeckAttach.x},${anchor.bodyNeckAttach.y}) faceNeck=(${anchor.faceNeckAttach.x},${anchor.faceNeckAttach.y}) eyeAttach=(${anchor.eyeAttach.x},${anchor.eyeAttach.y})`,
+      `[CHAR_COMPAT] body=${bodyPath} face=${facePath} compatible=${compat}`,
+      trace
+    ].join("\n");
   }
 
   function setAnchorDebug(open) {
@@ -2512,9 +2704,19 @@
   function applyAnchorDebugInputs() {
     const character = currentAnchorCharacter();
     if (!character) return;
-    setCharacterAnchor(character.id, {
-      face: { x: Number(nodes.faceXInput.value) || 0, y: Number(nodes.faceYInput.value) || 0 },
-      eye: { x: Number(nodes.eyeXInput.value) || 0, y: Number(nodes.eyeYInput.value) || 0 }
+    setCharacterAnchor(character, {
+      bodyNeckAttach: {
+        x: Number(nodes.bodyNeckXInput.value) || 0,
+        y: Number(nodes.bodyNeckYInput.value) || 0
+      },
+      faceNeckAttach: {
+        x: Number(nodes.faceNeckXInput.value) || 0,
+        y: Number(nodes.faceNeckYInput.value) || 0
+      },
+      eyeAttach: {
+        x: Number(nodes.eyeAttachXInput.value) || 0,
+        y: Number(nodes.eyeAttachYInput.value) || 0
+      }
     });
     renderEvent();
   }
@@ -3203,7 +3405,14 @@
     nodes.anchorApplyBtn?.addEventListener("click", applyAnchorDebugInputs);
     nodes.anchorCopyBtn?.addEventListener("click", copyAnchorJson);
     nodes.anchorDownloadBtn?.addEventListener("click", downloadAnchorJson);
-    [nodes.faceXInput, nodes.faceYInput, nodes.eyeXInput, nodes.eyeYInput].forEach((input) => {
+    [
+      nodes.bodyNeckXInput,
+      nodes.bodyNeckYInput,
+      nodes.faceNeckXInput,
+      nodes.faceNeckYInput,
+      nodes.eyeAttachXInput,
+      nodes.eyeAttachYInput
+    ].forEach((input) => {
       input?.addEventListener("change", applyAnchorDebugInputs);
     });
     document.addEventListener("keydown", (event) => {
@@ -3237,11 +3446,13 @@
     } catch (_) {
       anchors = {};
     }
-    try {
-      const local = JSON.parse(localStorage.getItem("snowrain.characterAnchors") || "null");
-      if (local && typeof local === "object") anchors = { ...anchors, ...local };
-    } catch (_) {
-      // Ignore malformed local anchor edits.
+    if (!new URLSearchParams(window.location.search).has("noLocalAnchors")) {
+      try {
+        const local = JSON.parse(localStorage.getItem("snowrain.characterAnchors") || "null");
+        if (local && typeof local === "object") anchors = { ...anchors, ...local };
+      } catch (_) {
+        // Ignore malformed local anchor edits.
+      }
     }
     state.characterAnchors = anchors;
   }
@@ -3272,6 +3483,9 @@
     bind();
     renderGameState();
     showScreen("title");
+    if (new URLSearchParams(window.location.search).has("debugAnchors")) {
+      setAnchorDebug(true);
+    }
   }
 
   window.SnowRain = {

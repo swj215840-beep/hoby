@@ -662,9 +662,9 @@ button {
 .anchor-debug {
   position: absolute;
   right: 8px;
-  top: 10%;
+  top: 8%;
   z-index: 20;
-  width: 210px;
+  width: 244px;
   padding: 8px;
   border: 1px solid rgba(110, 180, 255, 0.85);
   background: rgba(3, 8, 16, 0.88);
@@ -717,7 +717,7 @@ button {
 
 .anchor-debug pre {
   overflow: auto;
-  max-height: 120px;
+  max-height: 150px;
   margin: 6px 0 0;
   white-space: pre-wrap;
   color: #9bd4ff;

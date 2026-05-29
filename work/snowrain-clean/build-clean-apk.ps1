@@ -174,8 +174,13 @@ $Keystore = Join-Path (Split-Path -Parent $Project) "snowrain-clean.keystore"
 
 New-Item -ItemType Directory -Force -Path $Gen, $Classes, $Dex | Out-Null
 
-& $Aapt2 compile --dir (Join-Path $Project "res") -o $Compiled
-Check-LastExit "aapt2 compile"
+Push-Location -LiteralPath $Project
+try {
+  & $Aapt2 compile --dir "res" -o $Compiled
+  Check-LastExit "aapt2 compile"
+} finally {
+  Pop-Location
+}
 & $Aapt2 link `
   -o $Linked `
   -I $AndroidJar `
@@ -187,13 +192,18 @@ Check-LastExit "aapt2 compile"
 Check-LastExit "aapt2 link"
 
 $JavaFiles = @()
-$JavaFiles += Get-ChildItem -LiteralPath (Join-Path $Project "src") -Recurse -Filter "*.java" | ForEach-Object FullName
-$JavaFiles += Get-ChildItem -LiteralPath $Gen -Recurse -Filter "*.java" | ForEach-Object FullName
+$JavaFiles += Get-ChildItem -LiteralPath (Join-Path $Project "src") -Recurse -Filter "*.java" | ForEach-Object { $_.FullName.Substring($Project.Length + 1) }
+$JavaFiles += Get-ChildItem -LiteralPath $Gen -Recurse -Filter "*.java" | ForEach-Object { $_.FullName.Substring($Project.Length + 1) }
 $ArgFile = Join-Path $Build "javac-files.txt"
 $JavaFiles | Set-Content -LiteralPath $ArgFile -Encoding ASCII
 
-& $Javac -encoding UTF-8 -source 8 -target 8 -classpath $AndroidJar -d $Classes "@$ArgFile"
-Check-LastExit "javac"
+Push-Location -LiteralPath $Project
+try {
+  & $Javac -encoding UTF-8 -source 8 -target 8 -classpath $AndroidJar -d $Classes "@$ArgFile"
+  Check-LastExit "javac"
+} finally {
+  Pop-Location
+}
 & $Jar cf $ClassesJar -C $Classes "."
 Check-LastExit "jar classes"
 & $D8 --lib $AndroidJar --output $Dex $ClassesJar
