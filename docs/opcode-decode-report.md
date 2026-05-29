@@ -17,9 +17,9 @@ Before this pass, frequent unknown opcodes were:
 
 | Opcode | Count | Decoded as |
 |---|---:|---|
-| `0x09` | 1433 | `SET_EYE` / auxiliary eye-expression command |
+| `0x09` | 1433 | `SET_CHARACTER_VARIANT_SLOT` / auxiliary pose slot |
 | `0x25` | 305 | `SET_LOVE_RESULT` |
-| `0x07` | 249 | `SET_CHARACTER_SLOT` marker |
+| `0x07` | 249 | `SET_CHARACTER_DISPLAY_SLOT_7` marker |
 | `0x0f` | 182 | `SET_ILLUSTER` payload |
 | `0x14` | 131 | `SET_MINI_ILLUSTER` payload |
 | `0x35` | 96 | `SET_LOVE_MENU_CLOSE` |
@@ -74,5 +74,5 @@ Full traces are in `docs/opcode-decode/captures.json`.
 ## Remaining Work
 
 - The names for nonvisual route/date/love marker opcodes are inferred from folder usage and repeated byte patterns, not from decompiled native symbols.
-- `0x07` is still a conservative character-slot marker. It is no longer unknown, but exact native meaning needs a deeper comparison with the original drawing stack.
+- `0x07` and `0x09` were rechecked against character metadata in `docs/character-slot-analysis.md`; neither should directly drive the eye image layer.
 - Transition prefix mode is currently logged as `mode`; any visual timing/fade parameters need original runtime instrumentation to reproduce exactly.

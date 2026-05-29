@@ -976,6 +976,7 @@
       body: character.variant,
       face: character.expression,
       eye: character.eye || null,
+      slot: character.variantSlot ?? null,
       position: character.position || "center"
     };
   }
@@ -1009,6 +1010,7 @@
       variant,
       expression,
       eye,
+      variantSlot: previousCharacter?.id === id ? previousCharacter.variantSlot ?? null : null,
       path,
       face: characterFacePathFor(id, expression),
       faceCandidates: characterFaceCandidatesFor(id, expression),
@@ -1169,11 +1171,19 @@
       }
     },
     0x07: {
-      name: "SET_CHARACTER_SLOT",
+      name: "SET_CHARACTER_DISPLAY_SLOT_7",
       kind: "CHAR",
       length: bytecodeLength(1),
       operands: () => ({}),
       execute(context) {
+        const character = context.result.character || context.previousCharacter;
+        if (character) {
+          context.result.character = {
+            ...character,
+            displaySlot: 7
+          };
+          context.currentOperands = { characterId: character.id, displaySlot: 7 };
+        }
         context.lastCharacterOpcode = null;
       }
     },
@@ -1202,21 +1212,23 @@
       }
     },
     0x09: {
-      name: "SET_EYE",
-      kind: "EYE",
+      name: "SET_CHARACTER_VARIANT_SLOT",
+      kind: "CHAR",
       length: bytecodeLength(2),
       operands(bytes, offset) {
-        return { eyeId: bytes[offset + 1] ?? null };
+        return { slotId: bytes[offset + 1] ?? null };
       },
       execute(context, operands) {
         const character = context.result.character || context.previousCharacter;
-        if (!character || operands.eyeId === 0xff) return;
+        if (!character) {
+          context.stateValue = operands.slotId;
+          return;
+        }
         context.result.character = {
           ...character,
-          eye: operands.eyeId,
-          eyePath: characterEyePathFor(operands.eyeId)
+          variantSlot: operands.slotId
         };
-        context.currentOperands = { characterId: character.id, eyeId: operands.eyeId };
+        context.currentOperands = { characterId: character.id, slotId: operands.slotId };
       }
     },
     0x0a: {
