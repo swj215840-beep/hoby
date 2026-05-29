@@ -81,6 +81,25 @@
         <button id="loveBtn" class="play-control love" aria-label="menu"></button>
         <button id="popBtn" class="play-control pop" aria-label="status"></button>
       </nav>
+      <aside id="anchorDebug" class="anchor-debug hidden" aria-label="anchor debug">
+        <div class="anchor-debug-head">
+          <strong>ANCHOR</strong>
+          <button id="anchorCloseBtn" type="button">X</button>
+        </div>
+        <div id="anchorDebugMeta" class="anchor-debug-meta">-</div>
+        <div class="anchor-debug-grid">
+          <label>face x <input id="faceXInput" type="number" step="1"></label>
+          <label>face y <input id="faceYInput" type="number" step="1"></label>
+          <label>eye x <input id="eyeXInput" type="number" step="1"></label>
+          <label>eye y <input id="eyeYInput" type="number" step="1"></label>
+        </div>
+        <div class="anchor-debug-actions">
+          <button id="anchorApplyBtn" type="button">APPLY</button>
+          <button id="anchorCopyBtn" type="button">COPY JSON</button>
+          <button id="anchorDownloadBtn" type="button">DOWNLOAD</button>
+        </div>
+        <pre id="anchorTrace"></pre>
+      </aside>
     </section>
 
     <section id="browserScreen" class="browser-screen hidden">

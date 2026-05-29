@@ -202,14 +202,6 @@
   const TRANSITION_COMMANDS = new Set([0xf9, 0xfa, 0xfb, 0xfc, 0xfd]);
   const CG_TRANSITION_COMMANDS = new Set([0xfa, 0xfc, 0xfd]);
   const BGM_MAX_ID = 19;
-  const FACE_OFFSETS = {
-    0: { x: -4, y: -4 },
-    2: { x: -2, y: -4 },
-    4: { x: -2, y: -3 },
-    6: { x: -2, y: -4 },
-    8: { x: -2, y: -4 },
-    10: { x: -2, y: -4 }
-  };
   const SPEAKER_CHARACTER_FALLBACK = {
     0: 0,
     1: 2,
@@ -323,6 +315,9 @@
     pendingBgm: null,
     spriteCache: new Map(),
     spriteRenderToken: 0,
+    characterAnchors: {},
+    scriptTrace: [],
+    debugAnchors: false,
     audioUnlocked: false,
     bgmAudio: null,
     game: createDefaultGameState()
@@ -358,6 +353,20 @@
     chapterList: $("chapterList"),
     galleryGrid: $("galleryGrid")
   };
+
+  Object.assign(nodes, {
+    anchorDebug: $("anchorDebug"),
+    anchorDebugMeta: $("anchorDebugMeta"),
+    anchorTrace: $("anchorTrace"),
+    anchorCloseBtn: $("anchorCloseBtn"),
+    faceXInput: $("faceXInput"),
+    faceYInput: $("faceYInput"),
+    eyeXInput: $("eyeXInput"),
+    eyeYInput: $("eyeYInput"),
+    anchorApplyBtn: $("anchorApplyBtn"),
+    anchorCopyBtn: $("anchorCopyBtn"),
+    anchorDownloadBtn: $("anchorDownloadBtn")
+  });
 
   function asset(path) {
     return `../game/${path}`;
@@ -570,6 +579,59 @@
     const normalized = Number.isFinite(numericExpression) && numericExpression > 0 ? numericExpression : 2;
     const choices = [normalized, 2, 1, 3, 4].filter((value, index, list) => list.indexOf(value) === index);
     return choices.map((value) => `character/face/${key}/${value}.png`);
+  }
+
+  function characterEyePathFor(eye = null) {
+    const numericEye = Number(eye);
+    if (!Number.isFinite(numericEye) || numericEye <= 0) return null;
+    return `character/eye/${numericEye}.png`;
+  }
+
+  function characterAnchorKey(id) {
+    return `character_${id}`;
+  }
+
+  function defaultCharacterAnchor(id) {
+    const body = characterImageFor(id, 1);
+    const files = state.characterMap[String(id)] || [];
+    const widthHint = id === 0 ? 300 : id === 2 ? 202 : id === 4 ? 188 : id === 6 ? 136 : id === 10 ? 160 : 240;
+    return {
+      body: { x: 0, y: 0 },
+      face: { x: Math.max(0, Math.round((widthHint - 76) / 2)), y: 0 },
+      eye: { x: Math.max(0, Math.round((widthHint - 76) / 2) + 8), y: 24 },
+      drawOrder: ["body", "face", "eye"],
+      source: body && files.length ? "fallback" : "fallback"
+    };
+  }
+
+  function characterAnchorFor(id) {
+    const key = characterAnchorKey(id);
+    const base = state.characterAnchors[key] || defaultCharacterAnchor(id);
+    return {
+      body: { x: Number(base.body?.x || 0), y: Number(base.body?.y || 0) },
+      face: { x: Number(base.face?.x || 0), y: Number(base.face?.y || 0) },
+      eye: { x: Number(base.eye?.x || 0), y: Number(base.eye?.y || 0) },
+      drawOrder: Array.isArray(base.drawOrder) && base.drawOrder.length ? base.drawOrder : ["body", "face", "eye"]
+    };
+  }
+
+  function setCharacterAnchor(id, patch) {
+    const key = characterAnchorKey(id);
+    const current = characterAnchorFor(id);
+    state.characterAnchors[key] = {
+      ...current,
+      ...patch,
+      body: { ...current.body, ...(patch.body || {}) },
+      face: { ...current.face, ...(patch.face || {}) },
+      eye: { ...current.eye, ...(patch.eye || {}) },
+      drawOrder: patch.drawOrder || current.drawOrder
+    };
+    state.spriteCache.clear();
+    try {
+      localStorage.setItem("snowrain.characterAnchors", JSON.stringify(state.characterAnchors, null, 2));
+    } catch (_) {
+      // localStorage can be unavailable in restricted previews.
+    }
   }
 
   function primaryHeroineCharacterId() {
@@ -899,13 +961,130 @@
     return null;
   }
 
-  function controlsFromPrefix(prefix, speakerCode, previousCharacter, text) {
-    const scene = sceneHintFromPrefix(prefix);
-    const character = characterHintFromPrefix(prefix, speakerCode, previousCharacter);
+  function traceCommand(trace, kind, line, opcode, message) {
+    const entry = `[${kind}] line=${line} opcode=0x${opcode.toString(16).padStart(2, "0")} ${message}`;
+    trace.push(entry);
+    return entry;
+  }
+
+  function visualCommandsFromPrefix(bytes, speakerCode, previousCharacter, lineNumber = 0) {
+    const trace = [];
+    const result = { scene: null, character: null, trace };
+    for (let i = 0; i < bytes.length; i += 1) {
+      const opcode = bytes[i];
+      if (opcode === 0x02 && i + 1 < bytes.length) {
+        const value = bytes[i + 1];
+        const belongsToCharacter = (i >= 1 && CHARACTER_COMMANDS.has(bytes[i - 1])) || (i >= 2 && CHARACTER_COMMANDS.has(bytes[i - 2]));
+        if (!belongsToCharacter && backgroundPathForId(value)) {
+          result.scene = value;
+          traceCommand(trace, "SCENE", lineNumber, opcode, `setBackground(${value})`);
+          i += 1;
+        }
+        continue;
+      }
+
+      if (opcode === 0x05 && i + 2 < bytes.length) {
+        const slot = bytes[i + 1];
+        const expression = bytes[i + 2];
+        if (slot === 0xff || expression === 0xff) {
+          result.character = null;
+          traceCommand(trace, "CHAR", lineNumber, opcode, "clearCharacter()");
+          i += 2;
+          continue;
+        }
+        const id = previousCharacter?.id ?? fallbackCharacterForSpeaker(speakerCode) ?? primaryHeroineCharacterId();
+        if (!hasCharacter(id)) continue;
+        const variant = previousCharacter?.variant || 1;
+        const path = characterImageFor(id, variant);
+        if (!path) continue;
+        result.character = {
+          id,
+          variant,
+          expression,
+          eye: previousCharacter?.eye || null,
+          path,
+          face: characterFacePathFor(id, expression),
+          faceCandidates: characterFaceCandidatesFor(id, expression),
+          eyePath: characterEyePathFor(previousCharacter?.eye || null),
+          position: positionHintFromPrefix(bytes, i) || previousCharacter?.position || "center"
+        };
+        traceCommand(trace, "FACE", lineNumber, opcode, `setExpression(character=${id}, face=${expression})`);
+        i += 2;
+        continue;
+      }
+
+      if (opcode === 0x08 && i + 2 < bytes.length) {
+        const id = bytes[i + 1];
+        const variant = bytes[i + 2];
+        if (id === 0xff || variant === 0xff) {
+          result.character = null;
+          traceCommand(trace, "CHAR", lineNumber, opcode, "clearCharacter()");
+          i += 2;
+          continue;
+        }
+        if (!hasCharacter(id)) continue;
+        const expression = previousCharacter?.id === id ? previousCharacter.expression || 2 : 2;
+        const path = characterImageFor(id, variant);
+        if (!path) continue;
+        result.character = {
+          id,
+          variant,
+          expression,
+          eye: previousCharacter?.id === id ? previousCharacter.eye || null : null,
+          path,
+          face: characterFacePathFor(id, expression),
+          faceCandidates: characterFaceCandidatesFor(id, expression),
+          eyePath: characterEyePathFor(previousCharacter?.id === id ? previousCharacter.eye || null : null),
+          position: positionHintFromPrefix(bytes, i) || previousCharacter?.position || "center"
+        };
+        traceCommand(trace, "CHAR", lineNumber, opcode, `setCharacter(${id}, body=${variant})`);
+        i += 2;
+        continue;
+      }
+
+      if (opcode === 0x06 && i + 1 < bytes.length) {
+        const value = bytes[i + 1];
+        const isPositionByte = i >= 3 && CHARACTER_COMMANDS.has(bytes[i - 3]);
+        if (isPositionByte && result.character) {
+          if (value === 1) result.character.position = "left";
+          if (value === 2) result.character.position = "center";
+          if (value === 3) result.character.position = "right";
+          traceCommand(trace, "POS", lineNumber, opcode, `setPosition(character=${result.character.id}, pos=${value})`);
+        } else if (value >= 1 && value <= 6 && result.character) {
+          result.character.eye = value;
+          result.character.eyePath = characterEyePathFor(value);
+          traceCommand(trace, "EYE", lineNumber, opcode, `setEye(character=${result.character.id}, eye=${value})`);
+        } else {
+          traceCommand(trace, "STATE", lineNumber, opcode, `stateValue(${value})`);
+        }
+        i += 1;
+        continue;
+      }
+
+      if (TRANSITION_COMMANDS.has(opcode) && !CG_TRANSITION_COMMANDS.has(opcode)) {
+        const candidates = [];
+        if (bytes[i + 2] === 0x02) candidates.push(bytes[i + 3]);
+        if (bytes[i + 2] === 0x0e && bytes[i + 3] === 0x01) candidates.push(bytes[i + 4]);
+        if (bytes[i + 3] === 0x0e && bytes[i + 4] === 0x01) candidates.push(bytes[i + 5]);
+        candidates.push(bytes[i + 4], bytes[i + 5]);
+        const match = candidates.find((value) => backgroundPathForId(value));
+        if (match !== undefined) {
+          result.scene = match;
+          traceCommand(trace, "SCENE", lineNumber, opcode, `transitionBackground(${match})`);
+        }
+      }
+    }
+    return result;
+  }
+
+  function controlsFromPrefix(prefix, speakerCode, previousCharacter, text, lineNumber = 0) {
+    const visual = visualCommandsFromPrefix(prefix, speakerCode, previousCharacter, lineNumber);
+    const scene = visual.scene;
+    const character = visual.character;
     const cg = cgHintFromPrefix(prefix);
     const audio = audioHintFromPrefix(prefix);
     const effect = effectHintFromPrefix(prefix, audio, text);
-    return { scene, character, cg, audio, effect };
+    return { scene, character, cg, audio, effect, trace: visual.trace };
   }
 
   function hasCommand(bytes, command, value = null) {
@@ -1245,6 +1424,8 @@
     let lastSpeaker = { code: null, name: "나레이션" };
     let lastCharacter = null;
     let lastCg = cgFromSource();
+    let lineNumber = 0;
+    state.scriptTrace = [];
 
     for (let i = 0; i < bytes.length; i += 1) {
       if (bytes[i] !== 0x0c) continue;
@@ -1264,13 +1445,16 @@
       const speaker = speakerFromPrefix(prefix);
       if (speaker.code !== null) lastSpeaker = speaker;
       const eventSpeaker = speaker.code === null ? lastSpeaker : speaker;
-      const controls = controlsFromPrefix(prefix, eventSpeaker.code, lastCharacter, text);
+      const nextLineNumber = text.length > 0 ? lineNumber + 1 : lineNumber;
+      const controls = controlsFromPrefix(prefix, eventSpeaker.code, lastCharacter, text, nextLineNumber);
       if (controls.scene !== null) lastScene = controls.scene;
       if (controls.character) lastCharacter = controls.character;
       if (controls.cg.clear) lastCg = null;
       else if (controls.cg.path) lastCg = controls.cg.path;
+      if (controls.trace?.length) state.scriptTrace.push(...controls.trace);
 
       if (text.length > 0 && /[가-힣A-Za-z0-9.?!…-]/.test(text)) {
+        lineNumber += 1;
         events.push({
           text,
           speaker: eventSpeaker.name,
@@ -1281,6 +1465,7 @@
           cg: lastCg,
           audio: controls.audio,
           effect: controls.effect,
+          trace: controls.trace || [],
           _prefix: prefix
         });
       }
@@ -1815,8 +2000,8 @@
       ? character.faceCandidates
       : (character.face ? [character.face] : []);
     if (!faceCandidates.length) return asset(character.path);
-    const faceOffset = FACE_OFFSETS[character.id] || { x: 0, y: 0 };
-    const key = `${character.path}|${faceCandidates.join("|")}|${faceOffset.x},${faceOffset.y}`;
+    const anchor = characterAnchorFor(character.id);
+    const key = `${character.path}|${faceCandidates.join("|")}|${character.eyePath || ""}|${JSON.stringify(anchor)}`;
     if (state.spriteCache.has(key)) return state.spriteCache.get(key);
 
     const body = await loadSpriteImage(character.path);
@@ -1830,16 +2015,27 @@
       }
     }
     if (!face) return asset(character.path);
+    let eye = null;
+    if (character.eyePath) {
+      try {
+        eye = await loadSpriteImage(character.eyePath);
+      } catch (_) {
+        eye = null;
+      }
+    }
     const canvas = document.createElement("canvas");
     canvas.width = body.naturalWidth || body.width;
     canvas.height = body.naturalHeight || body.height;
     const context = canvas.getContext("2d");
     context.clearRect(0, 0, canvas.width, canvas.height);
     context.imageSmoothingEnabled = false;
-    context.drawImage(body, 0, 0);
-    const faceX = Math.round((canvas.width - (face.naturalWidth || face.width)) / 2) + faceOffset.x;
-    const faceY = faceOffset.y;
-    context.drawImage(face, faceX, faceY);
+
+    const drawLayer = (layer) => {
+      if (layer === "body") context.drawImage(body, anchor.body.x, anchor.body.y);
+      if (layer === "face") context.drawImage(face, anchor.face.x, anchor.face.y);
+      if (layer === "eye" && eye) context.drawImage(eye, anchor.eye.x, anchor.eye.y);
+    };
+    anchor.drawOrder.forEach(drawLayer);
     const url = canvas.toDataURL("image/png");
     state.spriteCache.set(key, url);
     return url;
@@ -1880,6 +2076,66 @@
     unlockGallery(event.cg);
   }
 
+  function currentAnchorCharacter() {
+    return currentEvent()?.character || null;
+  }
+
+  function anchorJsonText() {
+    return JSON.stringify(state.characterAnchors, null, 2);
+  }
+
+  function refreshAnchorDebug(event = currentEvent()) {
+    if (!nodes.anchorDebug || !state.debugAnchors) return;
+    const character = event?.character || null;
+    if (!character) {
+      nodes.anchorDebugMeta.textContent = "no character";
+      nodes.anchorTrace.textContent = (event?.trace || []).join("\n");
+      return;
+    }
+    const anchor = characterAnchorFor(character.id);
+    nodes.anchorDebugMeta.textContent = `character_${character.id} body=${character.variant} face=${character.expression} eye=${character.eye || "-"}`;
+    nodes.faceXInput.value = anchor.face.x;
+    nodes.faceYInput.value = anchor.face.y;
+    nodes.eyeXInput.value = anchor.eye.x;
+    nodes.eyeYInput.value = anchor.eye.y;
+    nodes.anchorTrace.textContent = (event?.trace || []).join("\n") || "(no visual opcode on this line)";
+  }
+
+  function setAnchorDebug(open) {
+    state.debugAnchors = open;
+    nodes.anchorDebug?.classList.toggle("hidden", !open);
+    refreshAnchorDebug();
+  }
+
+  function applyAnchorDebugInputs() {
+    const character = currentAnchorCharacter();
+    if (!character) return;
+    setCharacterAnchor(character.id, {
+      face: { x: Number(nodes.faceXInput.value) || 0, y: Number(nodes.faceYInput.value) || 0 },
+      eye: { x: Number(nodes.eyeXInput.value) || 0, y: Number(nodes.eyeYInput.value) || 0 }
+    });
+    renderEvent();
+  }
+
+  async function copyAnchorJson() {
+    const text = anchorJsonText();
+    try {
+      await navigator.clipboard.writeText(text);
+    } catch (_) {
+      nodes.anchorTrace.textContent = text;
+    }
+  }
+
+  function downloadAnchorJson() {
+    const blob = new Blob([anchorJsonText()], { type: "application/json" });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement("a");
+    link.href = url;
+    link.download = "characterAnchors.json";
+    link.click();
+    URL.revokeObjectURL(url);
+  }
+
   function renderEvent() {
     const event = state.events[state.eventIndex];
     if (!event) return;
@@ -1891,6 +2147,7 @@
     nodes.sceneLabel.textContent = sceneDisplayLabel(event);
     nodes.speakerName.textContent = event.speaker;
     nodes.lineCounter.textContent = `${state.eventIndex + 1} / ${state.events.length}`;
+    refreshAnchorDebug(event);
     renderGameState();
     typeText(event.text);
     save();
@@ -2539,9 +2796,17 @@
     $("openGalleryBtn").addEventListener("click", openGallery);
     $("titleFromMenuBtn").addEventListener("click", () => showScreen("title"));
     $("browserBackBtn").addEventListener("click", () => showScreen(state.events.length ? "game" : "title"));
+    nodes.anchorCloseBtn?.addEventListener("click", () => setAnchorDebug(false));
+    nodes.anchorApplyBtn?.addEventListener("click", applyAnchorDebugInputs);
+    nodes.anchorCopyBtn?.addEventListener("click", copyAnchorJson);
+    nodes.anchorDownloadBtn?.addEventListener("click", downloadAnchorJson);
+    [nodes.faceXInput, nodes.faceYInput, nodes.eyeXInput, nodes.eyeYInput].forEach((input) => {
+      input?.addEventListener("change", applyAnchorDebugInputs);
+    });
     document.addEventListener("keydown", (event) => {
       if (event.key === "ArrowLeft") prev();
       if (event.key === "ArrowRight" || event.key === " ") revealOrNext();
+      if (event.key.toLowerCase() === "d" && event.shiftKey) setAnchorDebug(!state.debugAnchors);
       if (event.key === "Escape") {
         if (state.choiceOpen) closeChoices();
         else openCenterMenu();
@@ -2561,9 +2826,27 @@
     state.fileIndex.set("sound", sortNumeric(optional.sound || []));
   }
 
+  async function loadCharacterAnchors() {
+    let anchors = {};
+    try {
+      const response = await fetch("data/characterAnchors.json");
+      if (response.ok) anchors = await response.json();
+    } catch (_) {
+      anchors = {};
+    }
+    try {
+      const local = JSON.parse(localStorage.getItem("snowrain.characterAnchors") || "null");
+      if (local && typeof local === "object") anchors = { ...anchors, ...local };
+    } catch (_) {
+      // Ignore malformed local anchor edits.
+    }
+    state.characterAnchors = anchors;
+  }
+
   async function init() {
     const response = await fetch("manifest.json");
     state.manifest = await response.json();
+    await loadCharacterAnchors();
     state.backgrounds = sortNumeric(state.manifest.backgrounds || []);
     state.illust = sortNumeric(state.manifest.illust || []);
     state.backgroundSet = new Set(state.backgrounds);
@@ -2597,6 +2880,15 @@
         else if (state.menuOpen) closeCenterMenu();
         else openCenterMenu();
       }
+    },
+    trace() {
+      return [...state.scriptTrace];
+    },
+    anchors() {
+      return JSON.parse(anchorJsonText());
+    },
+    debugAnchors(open = true) {
+      setAnchorDebug(Boolean(open));
     }
   };
 

@@ -1,0 +1,92 @@
+[
+  {
+    "name": "after-01-line001",
+    "bg": "../game/Bg/28.png",
+    "line": "1 / 118",
+    "scene": "번화가",
+    "speaker": "나레이션",
+    "text": "인생은 탄생과 죽음 사이의 선택...",
+    "trace": "[SCENE] line=1 opcode=0xfb transitionBackground(28)\n[SCENE] line=1 opcode=0x02 setBackground(28)"
+  },
+  {
+    "name": "after-02-line017",
+    "bg": "../game/Bg/4.png",
+    "line": "17 / 118",
+    "scene": "쇼핑가",
+    "speaker": "다혜",
+    "text": "서지훈!",
+    "trace": ""
+  },
+  {
+    "name": "after-03-line037",
+    "bg": "../game/Bg/28.png",
+    "line": "37 / 118",
+    "scene": "번화가",
+    "speaker": "다혜",
+    "text": "응? 벌써?",
+    "trace": "[SCENE] line=37 opcode=0x02 setBackground(28)\n[FACE] line=37 opcode=0x05 setExpression(character=0, face=10)\n[POS] line=37 opcode=0x06 setPosition(character=0, pos=3)"
+  },
+  {
+    "name": "after-04-line042",
+    "bg": "../game/Bg/28.png",
+    "line": "42 / 118",
+    "scene": "번화가",
+    "speaker": "다혜",
+    "text": "그래도 모처럼의 데이트인데커피 한 잔이 빠지면 뭔가 서운하잖아.",
+    "trace": "[FACE] line=42 opcode=0x05 setExpression(character=0, face=2)"
+  },
+  {
+    "name": "after-05-line046",
+    "bg": "../game/Bg/28.png",
+    "line": "46 / 118",
+    "scene": "번화가",
+    "speaker": "다혜",
+    "text": "그럼 내가 까먹은 벌로 커피 살게.",
+    "trace": "[FACE] line=46 opcode=0x05 setExpression(character=0, face=2)"
+  },
+  {
+    "name": "after-06-line050",
+    "bg": "../game/Bg/28.png",
+    "line": "50 / 118",
+    "scene": "번화가",
+    "speaker": "다혜",
+    "text": "결국 못 이기고 카페로 들어간다.",
+    "trace": "(no visual opcode on this line)"
+  },
+  {
+    "name": "after-07-line055",
+    "bg": "../game/Bg/27.png",
+    "line": "55 / 118",
+    "scene": "카페",
+    "speaker": "다혜",
+    "text": "음~ 아!",
+    "trace": "[SCENE] line=55 opcode=0x02 setBackground(27)\n[FACE] line=55 opcode=0x05 setExpression(character=0, face=10)\n[POS] line=55 opcode=0x06 setPosition(character=0, pos=3)"
+  },
+  {
+    "name": "after-08-line056",
+    "bg": "../game/Bg/27.png",
+    "line": "56 / 118",
+    "scene": "카페",
+    "speaker": "다혜",
+    "text": "저기 빈자리 있다.자리 좀 맡아줘 커피 사올게.",
+    "trace": "[FACE] line=56 opcode=0x05 setExpression(character=0, face=2)"
+  },
+  {
+    "name": "after-09-line058",
+    "bg": "../game/Bg/27.png",
+    "line": "58 / 118",
+    "scene": "카페",
+    "speaker": "다혜",
+    "text": "뭐 마실래?",
+    "trace": "[FACE] line=58 opcode=0x05 setExpression(character=0, face=2)"
+  },
+  {
+    "name": "after-10-line070",
+    "bg": "../game/Bg/27.png",
+    "line": "70 / 118",
+    "scene": "카페",
+    "speaker": "다혜",
+    "text": "아.. 항상 카페에 오면 블랙만 마시길래난 블랙을 좋아하는 줄 알았는데...",
+    "trace": "[FACE] line=70 opcode=0x05 setExpression(character=0, face=1)"
+  }
+]

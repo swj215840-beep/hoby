@@ -1,0 +1,50 @@
+{
+  "character_0": {
+    "body": { "x": 0, "y": 0 },
+    "face": { "x": 108, "y": -4 },
+    "eye": { "x": 116, "y": 21 },
+    "drawOrder": ["body", "face", "eye"]
+  },
+  "character_1": {
+    "body": { "x": 0, "y": 0 },
+    "face": { "x": 82, "y": -4 },
+    "eye": { "x": 90, "y": 21 },
+    "drawOrder": ["body", "face", "eye"]
+  },
+  "character_2": {
+    "body": { "x": 0, "y": 0 },
+    "face": { "x": 61, "y": -4 },
+    "eye": { "x": 69, "y": 21 },
+    "drawOrder": ["body", "face", "eye"]
+  },
+  "character_3": {
+    "body": { "x": 0, "y": 0 },
+    "face": { "x": 57, "y": -4 },
+    "eye": { "x": 65, "y": 21 },
+    "drawOrder": ["body", "face", "eye"]
+  },
+  "character_4": {
+    "body": { "x": 0, "y": 0 },
+    "face": { "x": 56, "y": -3 },
+    "eye": { "x": 64, "y": 20 },
+    "drawOrder": ["body", "face", "eye"]
+  },
+  "character_6": {
+    "body": { "x": 0, "y": 0 },
+    "face": { "x": 28, "y": -4 },
+    "eye": { "x": 36, "y": 21 },
+    "drawOrder": ["body", "face", "eye"]
+  },
+  "character_8": {
+    "body": { "x": 0, "y": 0 },
+    "face": { "x": 121, "y": -4 },
+    "eye": { "x": 129, "y": 21 },
+    "drawOrder": ["body", "face", "eye"]
+  },
+  "character_10": {
+    "body": { "x": 0, "y": 0 },
+    "face": { "x": 43, "y": -4 },
+    "eye": { "x": 51, "y": 21 },
+    "drawOrder": ["body", "face", "eye"]
+  }
+}
