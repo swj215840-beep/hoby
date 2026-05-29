@@ -112,7 +112,7 @@
     23: "\uc218\uc871\uad00",
     24: "\uacf5\uc6d0",
     26: "\ubc88\ud654\uac00",
-    27: "\uc1fc\ud551\uac00",
+    27: "\uce74\ud398",
     28: "\ubc88\ud654\uac00",
     29: "\uce74\ud398",
     30: "\ub808\uc2a4\ud1a0\ub791",
@@ -202,6 +202,14 @@
   const TRANSITION_COMMANDS = new Set([0xf9, 0xfa, 0xfb, 0xfc, 0xfd]);
   const CG_TRANSITION_COMMANDS = new Set([0xfa, 0xfc, 0xfd]);
   const BGM_MAX_ID = 19;
+  const FACE_OFFSETS = {
+    0: { x: -4, y: -4 },
+    2: { x: -2, y: -4 },
+    4: { x: -2, y: -3 },
+    6: { x: -2, y: -4 },
+    8: { x: -2, y: -4 },
+    10: { x: -2, y: -4 }
+  };
   const SPEAKER_CHARACTER_FALLBACK = {
     0: 0,
     1: 2,
@@ -1807,7 +1815,8 @@
       ? character.faceCandidates
       : (character.face ? [character.face] : []);
     if (!faceCandidates.length) return asset(character.path);
-    const key = `${character.path}|${faceCandidates.join("|")}`;
+    const faceOffset = FACE_OFFSETS[character.id] || { x: 0, y: 0 };
+    const key = `${character.path}|${faceCandidates.join("|")}|${faceOffset.x},${faceOffset.y}`;
     if (state.spriteCache.has(key)) return state.spriteCache.get(key);
 
     const body = await loadSpriteImage(character.path);
@@ -1824,12 +1833,13 @@
     const canvas = document.createElement("canvas");
     canvas.width = body.naturalWidth || body.width;
     canvas.height = body.naturalHeight || body.height;
-    const bodyY = 0;
     const context = canvas.getContext("2d");
     context.clearRect(0, 0, canvas.width, canvas.height);
-    context.drawImage(body, 0, bodyY);
-    const faceX = Math.round((canvas.width - (face.naturalWidth || face.width)) / 2);
-    context.drawImage(face, faceX, bodyY);
+    context.imageSmoothingEnabled = false;
+    context.drawImage(body, 0, 0);
+    const faceX = Math.round((canvas.width - (face.naturalWidth || face.width)) / 2) + faceOffset.x;
+    const faceY = faceOffset.y;
+    context.drawImage(face, faceX, faceY);
     const url = canvas.toDataURL("image/png");
     state.spriteCache.set(key, url);
     return url;
