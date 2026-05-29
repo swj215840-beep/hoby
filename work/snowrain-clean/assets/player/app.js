@@ -961,120 +961,296 @@
     return null;
   }
 
-  function traceCommand(trace, kind, line, opcode, message) {
-    const entry = `[${kind}] line=${line} opcode=0x${opcode.toString(16).padStart(2, "0")} ${message}`;
-    trace.push(entry);
+  function byteHex(value) {
+    return `0x${Number(value || 0).toString(16).padStart(2, "0")}`;
+  }
+
+  function rawBytesAt(bytes, offset, length) {
+    return Array.from(bytes.slice(offset, Math.min(bytes.length, offset + length))).map(byteHex);
+  }
+
+  function characterStateSnapshot(character) {
+    if (!character) return null;
+    return {
+      id: character.id,
+      body: character.variant,
+      face: character.expression,
+      eye: character.eye || null,
+      position: character.position || "center"
+    };
+  }
+
+  function bytecodeStateSnapshot(context) {
+    return {
+      scene: context.result.scene,
+      character: characterStateSnapshot(context.result.character)
+    };
+  }
+
+  function traceBytecodeCommand(context, command) {
+    const entry = [
+      `[${command.kind}] line=${context.lineNumber}`,
+      `offset=${byteHex(command.offset)}`,
+      `raw=${command.raw.join(" ")}`,
+      `opcode=${command.name}`,
+      `operands=${JSON.stringify(command.operands)}`,
+      `result=${JSON.stringify(bytecodeStateSnapshot(context))}`
+    ].join(" ");
+    context.result.trace.push(entry);
     return entry;
   }
 
-  function visualCommandsFromPrefix(bytes, speakerCode, previousCharacter, lineNumber = 0) {
-    const trace = [];
-    const result = { scene: null, character: null, trace };
-    for (let i = 0; i < bytes.length; i += 1) {
-      const opcode = bytes[i];
-      if (opcode === 0x02 && i + 1 < bytes.length) {
-        const value = bytes[i + 1];
-        const belongsToCharacter = (i >= 1 && CHARACTER_COMMANDS.has(bytes[i - 1])) || (i >= 2 && CHARACTER_COMMANDS.has(bytes[i - 2]));
-        if (!belongsToCharacter && backgroundPathForId(value)) {
-          result.scene = value;
-          traceCommand(trace, "SCENE", lineNumber, opcode, `setBackground(${value})`);
-          i += 1;
-        }
-        continue;
-      }
+  function makeCharacterState(id, variant, expression, previousCharacter, position = null) {
+    const path = characterImageFor(id, variant);
+    if (!path) return null;
+    const eye = previousCharacter?.id === id ? previousCharacter.eye || null : null;
+    return {
+      id,
+      variant,
+      expression,
+      eye,
+      path,
+      face: characterFacePathFor(id, expression),
+      faceCandidates: characterFaceCandidatesFor(id, expression),
+      eyePath: characterEyePathFor(eye),
+      position: position || (previousCharacter?.id === id ? previousCharacter.position : null) || "center"
+    };
+  }
 
-      if (opcode === 0x05 && i + 2 < bytes.length) {
-        const slot = bytes[i + 1];
-        const expression = bytes[i + 2];
-        if (slot === 0xff || expression === 0xff) {
-          result.character = null;
-          traceCommand(trace, "CHAR", lineNumber, opcode, "clearCharacter()");
-          i += 2;
-          continue;
-        }
-        const id = previousCharacter?.id ?? fallbackCharacterForSpeaker(speakerCode) ?? primaryHeroineCharacterId();
-        if (!hasCharacter(id)) continue;
-        const variant = previousCharacter?.variant || 1;
-        const path = characterImageFor(id, variant);
-        if (!path) continue;
-        result.character = {
-          id,
-          variant,
-          expression,
-          eye: previousCharacter?.eye || null,
-          path,
-          face: characterFacePathFor(id, expression),
-          faceCandidates: characterFaceCandidatesFor(id, expression),
-          eyePath: characterEyePathFor(previousCharacter?.eye || null),
-          position: positionHintFromPrefix(bytes, i) || previousCharacter?.position || "center"
-        };
-        traceCommand(trace, "FACE", lineNumber, opcode, `setExpression(character=${id}, face=${expression})`);
-        i += 2;
-        continue;
-      }
+  function bytecodeLength(fixedLength) {
+    return (bytes, offset) => Math.min(fixedLength, Math.max(1, bytes.length - offset));
+  }
 
-      if (opcode === 0x08 && i + 2 < bytes.length) {
-        const id = bytes[i + 1];
-        const variant = bytes[i + 2];
-        if (id === 0xff || variant === 0xff) {
-          result.character = null;
-          traceCommand(trace, "CHAR", lineNumber, opcode, "clearCharacter()");
-          i += 2;
-          continue;
-        }
-        if (!hasCharacter(id)) continue;
-        const expression = previousCharacter?.id === id ? previousCharacter.expression || 2 : 2;
-        const path = characterImageFor(id, variant);
-        if (!path) continue;
-        result.character = {
-          id,
-          variant,
-          expression,
-          eye: previousCharacter?.id === id ? previousCharacter.eye || null : null,
-          path,
-          face: characterFacePathFor(id, expression),
-          faceCandidates: characterFaceCandidatesFor(id, expression),
-          eyePath: characterEyePathFor(previousCharacter?.id === id ? previousCharacter.eye || null : null),
-          position: positionHintFromPrefix(bytes, i) || previousCharacter?.position || "center"
-        };
-        traceCommand(trace, "CHAR", lineNumber, opcode, `setCharacter(${id}, body=${variant})`);
-        i += 2;
-        continue;
+  const OPCODE_HANDLERS = {
+    0x00: {
+      name: "NOOP",
+      kind: "CONTROL",
+      length: bytecodeLength(1),
+      operands: () => ({}),
+      execute() {}
+    },
+    0x01: {
+      name: "BLOCK_MARKER",
+      kind: "CONTROL",
+      length: bytecodeLength(1),
+      operands(bytes, offset) {
+        return { marker: bytes[offset] };
+      },
+      execute() {}
+    },
+    0x02: {
+      name: "SET_BACKGROUND",
+      kind: "SCENE",
+      length: bytecodeLength(2),
+      operands(bytes, offset) {
+        const bgId = bytes[offset + 1] ?? null;
+        return { bgId, valid: backgroundPathForId(bgId) !== null };
+      },
+      execute(context, operands) {
+        if (operands.valid) context.result.scene = operands.bgId;
       }
+    },
+    0x03: {
+      name: "SET_EFFECT",
+      kind: "STATE",
+      length: bytecodeLength(2),
+      operands(bytes, offset) {
+        return { effectId: bytes[offset + 1] ?? null };
+      },
+      execute(context, operands) {
+        context.effectId = operands.effectId;
+      }
+    },
+    0x04: {
+      name: "PLAY_AUDIO",
+      kind: "AUDIO",
+      length: bytecodeLength(2),
+      operands(bytes, offset) {
+        return { audioId: bytes[offset + 1] ?? null };
+      },
+      execute(context, operands) {
+        context.audioId = operands.audioId;
+      }
+    },
+    0x05: {
+      name: "SET_EXPRESSION",
+      kind: "FACE",
+      length: bytecodeLength(3),
+      operands(bytes, offset) {
+        return { characterId: bytes[offset + 1] ?? null, faceId: bytes[offset + 2] ?? null };
+      },
+      execute(context, operands) {
+        if (operands.characterId === 0xff || operands.faceId === 0xff) {
+          context.result.character = null;
+          context.lastCharacterOpcode = "CLEAR_CHARACTER";
+          return;
+        }
+        const id = operands.characterId;
+        if (!hasCharacter(id)) {
+          context.lastCharacterOpcode = null;
+          return;
+        }
+        const previous = context.result.character || context.previousCharacter;
+        const variant = previous?.id === id ? previous.variant || 1 : 1;
+        const character = makeCharacterState(id, variant, operands.faceId, previous);
+        if (character) context.result.character = character;
+        context.lastCharacterOpcode = "SET_EXPRESSION";
+      }
+    },
+    0x06: {
+      name: "SET_CONTEXT_VALUE",
+      kind: "STATE",
+      length: bytecodeLength(2),
+      operands(bytes, offset) {
+        return { value: bytes[offset + 1] ?? null };
+      },
+      execute(context, operands) {
+        const character = context.result.character || context.previousCharacter;
+        if (context.lastCharacterOpcode && character && operands.value >= 1 && operands.value <= 3) {
+          const position = operands.value === 1 ? "left" : operands.value === 2 ? "center" : "right";
+          context.result.character = { ...character, position };
+          context.currentKind = "POS";
+          context.currentName = "SET_POSITION";
+          context.currentOperands = { characterId: character.id, positionId: operands.value, position };
+          context.lastCharacterOpcode = null;
+          return;
+        }
+        if (character && operands.value >= 1 && operands.value <= 6) {
+          context.result.character = {
+            ...character,
+            eye: operands.value,
+            eyePath: characterEyePathFor(operands.value)
+          };
+          context.currentKind = "EYE";
+          context.currentName = "SET_EYE";
+          context.currentOperands = { characterId: character.id, eyeId: operands.value };
+          context.lastCharacterOpcode = null;
+          return;
+        }
+        context.stateValue = operands.value;
+        context.lastCharacterOpcode = null;
+      }
+    },
+    0x08: {
+      name: "SET_CHARACTER",
+      kind: "CHAR",
+      length: bytecodeLength(3),
+      operands(bytes, offset) {
+        return { characterId: bytes[offset + 1] ?? null, bodyId: bytes[offset + 2] ?? null };
+      },
+      execute(context, operands) {
+        if (operands.characterId === 0xff || operands.bodyId === 0xff) {
+          context.result.character = null;
+          context.lastCharacterOpcode = "CLEAR_CHARACTER";
+          return;
+        }
+        if (!hasCharacter(operands.characterId)) {
+          context.lastCharacterOpcode = null;
+          return;
+        }
+        const previous = context.result.character || context.previousCharacter;
+        const expression = previous?.id === operands.characterId ? previous.expression || 2 : 2;
+        const character = makeCharacterState(operands.characterId, operands.bodyId, expression, previous);
+        if (character) context.result.character = character;
+        context.lastCharacterOpcode = "SET_CHARACTER";
+      }
+    },
+    0x0a: {
+      name: "LINE_FEED",
+      kind: "CONTROL",
+      length: bytecodeLength(1),
+      operands: () => ({}),
+      execute() {}
+    },
+    0x0b: {
+      name: "SET_SPEAKER",
+      kind: "SPEAKER",
+      length: bytecodeLength(2),
+      operands(bytes, offset) {
+        return { speakerId: bytes[offset + 1] ?? null };
+      },
+      execute(context, operands) {
+        context.speakerCode = operands.speakerId;
+      }
+    },
+    0x0d: {
+      name: "LINE_BREAK",
+      kind: "CONTROL",
+      length(bytes, offset) {
+        return bytes[offset + 1] === 0x0a ? 2 : 1;
+      },
+      operands(bytes, offset) {
+        return { crlf: bytes[offset + 1] === 0x0a };
+      },
+      execute() {}
+    },
+    0x0e: {
+      name: "SET_STATE_VALUE",
+      kind: "STATE",
+      length: bytecodeLength(2),
+      operands(bytes, offset) {
+        return { stateValue: bytes[offset + 1] ?? null };
+      },
+      execute(context, operands) {
+        context.stateValue = operands.stateValue;
+      }
+    },
+    0xf9: { name: "TRANSITION", kind: "SCENE", length: bytecodeLength(1), operands: () => ({}), execute() {} },
+    0xfa: { name: "CG_TRANSITION", kind: "CG", length: bytecodeLength(1), operands: () => ({}), execute() {} },
+    0xfb: { name: "TRANSITION", kind: "SCENE", length: bytecodeLength(1), operands: () => ({}), execute() {} },
+    0xfc: { name: "CG_TRANSITION", kind: "CG", length: bytecodeLength(1), operands: () => ({}), execute() {} },
+    0xfd: { name: "CG_TRANSITION", kind: "CG", length: bytecodeLength(1), operands: () => ({}), execute() {} }
+  };
 
-      if (opcode === 0x06 && i + 1 < bytes.length) {
-        const value = bytes[i + 1];
-        const isPositionByte = i >= 3 && CHARACTER_COMMANDS.has(bytes[i - 3]);
-        if (isPositionByte && result.character) {
-          if (value === 1) result.character.position = "left";
-          if (value === 2) result.character.position = "center";
-          if (value === 3) result.character.position = "right";
-          traceCommand(trace, "POS", lineNumber, opcode, `setPosition(character=${result.character.id}, pos=${value})`);
-        } else if (value >= 1 && value <= 6 && result.character) {
-          result.character.eye = value;
-          result.character.eyePath = characterEyePathFor(value);
-          traceCommand(trace, "EYE", lineNumber, opcode, `setEye(character=${result.character.id}, eye=${value})`);
-        } else {
-          traceCommand(trace, "STATE", lineNumber, opcode, `stateValue(${value})`);
-        }
-        i += 1;
-        continue;
-      }
+  const UNKNOWN_OPCODE_HANDLER = {
+    name: "UNKNOWN",
+    kind: "UNKNOWN",
+    length: bytecodeLength(1),
+    operands(bytes, offset) {
+      return { value: bytes[offset] };
+    },
+    execute() {}
+  };
 
-      if (TRANSITION_COMMANDS.has(opcode) && !CG_TRANSITION_COMMANDS.has(opcode)) {
-        const candidates = [];
-        if (bytes[i + 2] === 0x02) candidates.push(bytes[i + 3]);
-        if (bytes[i + 2] === 0x0e && bytes[i + 3] === 0x01) candidates.push(bytes[i + 4]);
-        if (bytes[i + 3] === 0x0e && bytes[i + 4] === 0x01) candidates.push(bytes[i + 5]);
-        candidates.push(bytes[i + 4], bytes[i + 5]);
-        const match = candidates.find((value) => backgroundPathForId(value));
-        if (match !== undefined) {
-          result.scene = match;
-          traceCommand(trace, "SCENE", lineNumber, opcode, `transitionBackground(${match})`);
-        }
-      }
+  function parseVisualBytecode(bytes, speakerCode, previousCharacter, lineNumber = 0) {
+    const context = {
+      speakerCode,
+      previousCharacter,
+      lineNumber,
+      result: { scene: null, character: null, trace: [] },
+      lastCharacterOpcode: null,
+      stateValue: null,
+      audioId: null,
+      effectId: null
+    };
+
+    let cursor = 0;
+    while (cursor < bytes.length) {
+      const offset = cursor;
+      const opcode = bytes[offset];
+      const handler = OPCODE_HANDLERS[opcode] || UNKNOWN_OPCODE_HANDLER;
+      const length = Math.max(1, handler.length(bytes, offset, context));
+      const raw = rawBytesAt(bytes, offset, length);
+      const operands = handler.operands(bytes, offset, context, length);
+      context.currentKind = null;
+      context.currentName = null;
+      context.currentOperands = null;
+      handler.execute(context, operands, offset, length);
+      traceBytecodeCommand(context, {
+        offset,
+        raw,
+        name: context.currentName || handler.name,
+        kind: context.currentKind || handler.kind,
+        operands: context.currentOperands || operands
+      });
+      cursor += length;
     }
-    return result;
+
+    return context.result;
+  }
+
+  function visualCommandsFromPrefix(bytes, speakerCode, previousCharacter, lineNumber = 0) {
+    return parseVisualBytecode(bytes, speakerCode, previousCharacter, lineNumber);
   }
 
   function controlsFromPrefix(prefix, speakerCode, previousCharacter, text, lineNumber = 0) {
@@ -2147,6 +2323,7 @@
     nodes.sceneLabel.textContent = sceneDisplayLabel(event);
     nodes.speakerName.textContent = event.speaker;
     nodes.lineCounter.textContent = `${state.eventIndex + 1} / ${state.events.length}`;
+    nodes.gameScreen.dataset.trace = (event.trace || []).join("\n");
     refreshAnchorDebug(event);
     renderGameState();
     typeText(event.text);
