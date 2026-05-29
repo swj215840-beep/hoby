@@ -94,6 +94,7 @@ Example resolved line from the debug overlay:
 | # | Line | Before issue | After screenshot | Result |
 |---|---:|---|---|---|
 | 11 | 37 | Face was stored as a direct character-space coordinate, so the neck seam could drift when expression/body data changed. | `docs/render-fix/neck-after-line037.png` | Face is now positioned by body neck attach minus face neck attach; eye attach is relative to the face. |
+| 12 | 37 | Only a small hand-written subset of `face_N` anchors existed, so unlisted expressions could fall back to the wrong seam data. | `docs/render-fix/generated-anchor-line037.png` | `generate-character-anchors.ps1` generated all detected `cloth_N` and `face_N` anchor candidates from PNG opaque bounds. |
 
 ## Remaining Issues
 
@@ -102,6 +103,7 @@ Example resolved line from the debug overlay:
 - Some narrative lines intentionally keep the previous background until the next explicit scene opcode; this may still feel late compared with prose.
 - Debug overlay saves browser-local overrides and can export/download JSON. A static browser preview cannot directly write back to the source file without a local write endpoint.
 - Per-cloth native neck coordinates are now structurally supported. Most missing `cloth_N` entries still fall back to the `cloth_1` attach values until the original metadata fields are fully decoded for every body variant.
+- The generated anchors are first-pass candidates. The debug overlay remains the final correction surface for seam tuning, then the exported JSON can replace `data/characterAnchors.json`.
 
 ## Next Work
 
